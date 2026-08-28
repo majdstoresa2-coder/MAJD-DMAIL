@@ -1,0 +1,2421 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta
+    name="description"
+    content="MAJD DMAIL - Sovereign Domain Services Platform"
+  />
+  <meta name="theme-color" content="#07090d" />
+
+  <title>MAJD DMAIL | منصة مجد للنطاقات</title>
+
+  <style>
+    /* =========================================================
+       MAJD DMAIL OFFICIAL UI
+       Permanent public-facing interface
+       PRIVATE launch mode by default
+       ========================================================= */
+
+    :root {
+      --bg: #06080c;
+      --bg-soft: #0b0e14;
+      --panel: rgba(17, 20, 28, 0.82);
+      --panel-strong: #11151d;
+      --panel-light: #171c25;
+
+      --gold: #d7ad55;
+      --gold-2: #f1d58d;
+      --gold-3: #9d7633;
+      --gold-glow: rgba(215, 173, 85, 0.20);
+
+      --text: #f7f7f7;
+      --muted: #9ca3af;
+      --muted-2: #6f7784;
+
+      --green: #36d399;
+      --red: #ff6b6b;
+      --blue: #60a5fa;
+
+      --border: rgba(215, 173, 85, 0.20);
+      --border-soft: rgba(255, 255, 255, 0.07);
+
+      --radius: 22px;
+      --radius-small: 14px;
+
+      --shadow:
+        0 20px 60px rgba(0, 0, 0, 0.38);
+
+      --max-width: 1240px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      min-height: 100vh;
+      font-family:
+        "Segoe UI",
+        Tahoma,
+        Arial,
+        sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(
+          circle at 50% -10%,
+          rgba(215, 173, 85, 0.16),
+          transparent 30%
+        ),
+        radial-gradient(
+          circle at 10% 30%,
+          rgba(96, 165, 250, 0.05),
+          transparent 28%
+        ),
+        var(--bg);
+      line-height: 1.7;
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: -1;
+      opacity: 0.28;
+      background-image:
+        linear-gradient(
+          rgba(255, 255, 255, 0.018) 1px,
+          transparent 1px
+        ),
+        linear-gradient(
+          90deg,
+          rgba(255, 255, 255, 0.018) 1px,
+          transparent 1px
+        );
+      background-size: 48px 48px;
+    }
+
+    button,
+    input,
+    select {
+      font: inherit;
+    }
+
+    button {
+      cursor: pointer;
+    }
+
+    a {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    .container {
+      width: min(
+        calc(100% - 32px),
+        var(--max-width)
+      );
+      margin-inline: auto;
+    }
+
+    /* =========================================================
+       PRIVATE MODE BAR
+       ========================================================= */
+
+    .private-bar {
+      position: relative;
+      z-index: 50;
+      padding: 8px 16px;
+      text-align: center;
+      font-size: 12px;
+      color: var(--gold-2);
+      border-bottom: 1px solid var(--border);
+      background:
+        linear-gradient(
+          90deg,
+          rgba(215, 173, 85, 0.03),
+          rgba(215, 173, 85, 0.11),
+          rgba(215, 173, 85, 0.03)
+        );
+    }
+
+    .private-dot {
+      display: inline-block;
+      width: 7px;
+      height: 7px;
+      margin-inline: 6px;
+      border-radius: 50%;
+      background: var(--green);
+      box-shadow:
+        0 0 12px rgba(54, 211, 153, 0.8);
+    }
+
+    /* =========================================================
+       HEADER
+       ========================================================= */
+
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 40;
+      border-bottom: 1px solid var(--border-soft);
+      background: rgba(6, 8, 12, 0.84);
+      backdrop-filter: blur(18px);
+    }
+
+    .nav {
+      min-height: 78px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 22px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 13px;
+      min-width: max-content;
+    }
+
+    .crown {
+      width: 48px;
+      height: 48px;
+      display: grid;
+      place-items: center;
+      border-radius: 15px;
+      font-size: 25px;
+      color: var(--gold-2);
+      border: 1px solid var(--border);
+      background:
+        linear-gradient(
+          145deg,
+          rgba(215, 173, 85, 0.15),
+          rgba(215, 173, 85, 0.025)
+        );
+      box-shadow:
+        inset 0 0 25px rgba(215, 173, 85, 0.04),
+        0 0 30px rgba(215, 173, 85, 0.06);
+    }
+
+    .brand-text strong {
+      display: block;
+      color: var(--gold-2);
+      letter-spacing: 1.8px;
+      font-size: 18px;
+    }
+
+    .brand-text span {
+      display: block;
+      margin-top: -3px;
+      color: var(--muted);
+      font-size: 11px;
+      letter-spacing: 1px;
+    }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 28px;
+      color: #c8ccd3;
+      font-size: 14px;
+    }
+
+    .nav-links a {
+      transition: 0.2s ease;
+    }
+
+    .nav-links a:hover {
+      color: var(--gold-2);
+    }
+
+    .nav-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .language-btn,
+    .outline-btn {
+      border: 1px solid var(--border);
+      color: var(--gold-2);
+      background: transparent;
+      border-radius: 12px;
+      padding: 9px 13px;
+      transition: 0.2s ease;
+    }
+
+    .language-btn:hover,
+    .outline-btn:hover {
+      background: rgba(215, 173, 85, 0.08);
+    }
+
+    .primary-btn {
+      border: 0;
+      color: #17120a;
+      font-weight: 800;
+      border-radius: 12px;
+      padding: 10px 17px;
+      background:
+        linear-gradient(
+          135deg,
+          var(--gold-2),
+          var(--gold)
+        );
+      box-shadow:
+        0 8px 30px rgba(215, 173, 85, 0.16);
+      transition:
+        transform 0.2s ease,
+        box-shadow 0.2s ease;
+    }
+
+    .primary-btn:hover {
+      transform: translateY(-1px);
+      box-shadow:
+        0 12px 35px rgba(215, 173, 85, 0.23);
+    }
+
+    /* =========================================================
+       HERO
+       ========================================================= */
+
+    .hero {
+      position: relative;
+      min-height: 620px;
+      display: flex;
+      align-items: center;
+      padding: 90px 0 70px;
+    }
+
+    .hero-glow {
+      position: absolute;
+      width: 520px;
+      height: 520px;
+      top: 40px;
+      left: 50%;
+      transform: translateX(-50%);
+      pointer-events: none;
+      border-radius: 50%;
+      background:
+        radial-gradient(
+          circle,
+          rgba(215, 173, 85, 0.12),
+          transparent 67%
+        );
+      filter: blur(12px);
+    }
+
+    .hero-content {
+      position: relative;
+      z-index: 2;
+      width: 100%;
+      text-align: center;
+    }
+
+    .hero-crown {
+      width: 88px;
+      height: 88px;
+      margin: 0 auto 24px;
+      display: grid;
+      place-items: center;
+      font-size: 48px;
+      border-radius: 27px;
+      border: 1px solid rgba(215, 173, 85, 0.32);
+      background:
+        linear-gradient(
+          145deg,
+          rgba(215, 173, 85, 0.16),
+          rgba(215, 173, 85, 0.02)
+        );
+      box-shadow:
+        0 0 70px rgba(215, 173, 85, 0.13);
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 16px;
+      padding: 7px 13px;
+      color: var(--gold-2);
+      font-size: 12px;
+      letter-spacing: 1px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: rgba(215, 173, 85, 0.045);
+    }
+
+    .hero h1 {
+      max-width: 900px;
+      margin: auto;
+      font-size:
+        clamp(38px, 7vw, 76px);
+      line-height: 1.13;
+      letter-spacing: -2px;
+    }
+
+    .hero h1 .gold {
+      color: var(--gold-2);
+      text-shadow:
+        0 0 40px rgba(215, 173, 85, 0.14);
+    }
+
+    .hero-description {
+      max-width: 730px;
+      margin: 22px auto 0;
+      color: var(--muted);
+      font-size: 17px;
+    }
+
+    /* =========================================================
+       SEARCH
+       ========================================================= */
+
+    .domain-search-wrap {
+      max-width: 900px;
+      margin: 38px auto 0;
+      padding: 9px;
+      border: 1px solid rgba(215, 173, 85, 0.25);
+      border-radius: 20px;
+      background: rgba(13, 16, 22, 0.88);
+      box-shadow:
+        0 24px 80px rgba(0, 0, 0, 0.38),
+        0 0 60px rgba(215, 173, 85, 0.05);
+    }
+
+    .domain-search {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .search-icon {
+      width: 45px;
+      flex: 0 0 45px;
+      text-align: center;
+      color: var(--gold);
+      font-size: 20px;
+    }
+
+    .domain-search input {
+      min-width: 0;
+      flex: 1;
+      padding: 15px 8px;
+      border: 0;
+      outline: none;
+      color: var(--text);
+      background: transparent;
+      direction: ltr;
+      text-align: left;
+      font-size: 16px;
+    }
+
+    .domain-search input::placeholder {
+      color: #626a76;
+    }
+
+    .search-btn {
+      min-width: 145px;
+      padding: 14px 22px;
+      border: 0;
+      border-radius: 14px;
+      color: #181208;
+      font-weight: 900;
+      background:
+        linear-gradient(
+          135deg,
+          var(--gold-2),
+          var(--gold)
+        );
+    }
+
+    .search-hint {
+      margin-top: 12px;
+      color: var(--muted-2);
+      font-size: 12px;
+    }
+
+    /* =========================================================
+       STATUS MESSAGE
+       ========================================================= */
+
+    .message {
+      display: none;
+      max-width: 900px;
+      margin: 18px auto 0;
+      padding: 14px 16px;
+      text-align: start;
+      border-radius: 14px;
+      font-size: 14px;
+    }
+
+    .message.show {
+      display: block;
+    }
+
+    .message.info {
+      color: #cbd5e1;
+      border: 1px solid rgba(96, 165, 250, 0.25);
+      background: rgba(96, 165, 250, 0.07);
+    }
+
+    .message.warning {
+      color: #f5d995;
+      border: 1px solid rgba(215, 173, 85, 0.25);
+      background: rgba(215, 173, 85, 0.07);
+    }
+
+    .message.error {
+      color: #ffb4b4;
+      border: 1px solid rgba(255, 107, 107, 0.25);
+      background: rgba(255, 107, 107, 0.07);
+    }
+
+    /* =========================================================
+       DOMAIN EXTENSIONS
+       ========================================================= */
+
+    .extensions {
+      padding: 20px 0 90px;
+    }
+
+    .section-head {
+      max-width: 720px;
+      margin: 0 auto 35px;
+      text-align: center;
+    }
+
+    .section-head span {
+      color: var(--gold);
+      font-size: 12px;
+      letter-spacing: 1.3px;
+      text-transform: uppercase;
+    }
+
+    .section-head h2 {
+      margin-top: 7px;
+      font-size:
+        clamp(28px, 5vw, 42px);
+    }
+
+    .section-head p {
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .extension-grid {
+      display: grid;
+      grid-template-columns:
+        repeat(4, minmax(0, 1fr));
+      gap: 15px;
+    }
+
+    .extension-card {
+      position: relative;
+      overflow: hidden;
+      min-height: 150px;
+      padding: 22px;
+      border: 1px solid var(--border-soft);
+      border-radius: var(--radius);
+      background:
+        linear-gradient(
+          145deg,
+          rgba(255, 255, 255, 0.035),
+          rgba(255, 255, 255, 0.012)
+        );
+      box-shadow: var(--shadow);
+      transition:
+        transform 0.25s ease,
+        border-color 0.25s ease;
+    }
+
+    .extension-card:hover {
+      transform: translateY(-4px);
+      border-color: var(--border);
+    }
+
+    .extension-card::after {
+      content: "";
+      position: absolute;
+      width: 120px;
+      height: 120px;
+      left: -45px;
+      bottom: -55px;
+      border-radius: 50%;
+      background:
+        radial-gradient(
+          circle,
+          rgba(215, 173, 85, 0.12),
+          transparent 68%
+        );
+    }
+
+    .extension-name {
+      direction: ltr;
+      text-align: left;
+      color: var(--gold-2);
+      font-size: 27px;
+      font-weight: 900;
+    }
+
+    .extension-card p {
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .extension-price {
+      margin-top: 14px;
+      color: var(--muted-2);
+      font-size: 12px;
+    }
+
+    /* =========================================================
+       SERVICES
+       ========================================================= */
+
+    .services {
+      padding: 85px 0;
+      border-top: 1px solid var(--border-soft);
+      border-bottom: 1px solid var(--border-soft);
+      background:
+        linear-gradient(
+          180deg,
+          rgba(255, 255, 255, 0.012),
+          transparent
+        );
+    }
+
+    .service-grid {
+      display: grid;
+      grid-template-columns:
+        repeat(3, minmax(0, 1fr));
+      gap: 18px;
+    }
+
+    .service-card {
+      padding: 27px;
+      border: 1px solid var(--border-soft);
+      border-radius: var(--radius);
+      background: var(--panel);
+      box-shadow: var(--shadow);
+    }
+
+    .service-icon {
+      width: 48px;
+      height: 48px;
+      display: grid;
+      place-items: center;
+      margin-bottom: 18px;
+      border-radius: 14px;
+      color: var(--gold-2);
+      font-size: 21px;
+      border: 1px solid var(--border);
+      background: rgba(215, 173, 85, 0.06);
+    }
+
+    .service-card h3 {
+      font-size: 18px;
+    }
+
+    .service-card p {
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .service-state {
+      display: inline-block;
+      margin-top: 17px;
+      padding: 5px 9px;
+      border-radius: 999px;
+      color: #b4bac3;
+      font-size: 10px;
+      border: 1px solid var(--border-soft);
+      background: rgba(255, 255, 255, 0.025);
+    }
+
+    /* =========================================================
+       WHY MAJD
+       ========================================================= */
+
+    .why {
+      padding: 90px 0;
+    }
+
+    .why-grid {
+      display: grid;
+      grid-template-columns:
+        1fr 1fr;
+      gap: 45px;
+      align-items: center;
+    }
+
+    .why-copy h2 {
+      font-size:
+        clamp(30px, 5vw, 48px);
+      line-height: 1.25;
+    }
+
+    .why-copy h2 span {
+      color: var(--gold-2);
+    }
+
+    .why-copy > p {
+      margin-top: 18px;
+      color: var(--muted);
+    }
+
+    .feature-list {
+      display: grid;
+      gap: 13px;
+      margin-top: 28px;
+    }
+
+    .feature-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 14px 0;
+      border-bottom: 1px solid var(--border-soft);
+    }
+
+    .check {
+      width: 26px;
+      height: 26px;
+      flex: 0 0 26px;
+      display: grid;
+      place-items: center;
+      border-radius: 50%;
+      color: var(--gold-2);
+      border: 1px solid var(--border);
+      background: rgba(215, 173, 85, 0.05);
+    }
+
+    .feature-item strong {
+      display: block;
+      font-size: 14px;
+    }
+
+    .feature-item small {
+      display: block;
+      margin-top: 3px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .network-card {
+      position: relative;
+      min-height: 420px;
+      overflow: hidden;
+      display: grid;
+      place-items: center;
+      border: 1px solid var(--border);
+      border-radius: 32px;
+      background:
+        radial-gradient(
+          circle at center,
+          rgba(215, 173, 85, 0.10),
+          transparent 38%
+        ),
+        var(--panel);
+      box-shadow: var(--shadow);
+    }
+
+    .network-circle {
+      position: absolute;
+      border-radius: 50%;
+      border: 1px solid rgba(215, 173, 85, 0.12);
+    }
+
+    .network-circle.one {
+      width: 170px;
+      height: 170px;
+    }
+
+    .network-circle.two {
+      width: 270px;
+      height: 270px;
+    }
+
+    .network-circle.three {
+      width: 370px;
+      height: 370px;
+    }
+
+    .network-center {
+      position: relative;
+      z-index: 3;
+      width: 110px;
+      height: 110px;
+      display: grid;
+      place-items: center;
+      border-radius: 30px;
+      font-size: 52px;
+      border: 1px solid rgba(215, 173, 85, 0.30);
+      background: #11151d;
+      box-shadow:
+        0 0 80px rgba(215, 173, 85, 0.18);
+    }
+
+    .network-label {
+      position: absolute;
+      z-index: 4;
+      padding: 6px 10px;
+      border-radius: 10px;
+      color: #b9bec7;
+      font-size: 10px;
+      border: 1px solid var(--border-soft);
+      background: rgba(10, 13, 18, 0.9);
+    }
+
+    .label-1 {
+      top: 60px;
+      left: 50%;
+      transform: translateX(-50%);
+    }
+
+    .label-2 {
+      right: 40px;
+      top: 50%;
+    }
+
+    .label-3 {
+      left: 40px;
+      top: 50%;
+    }
+
+    .label-4 {
+      bottom: 55px;
+      left: 50%;
+      transform: translateX(-50%);
+    }
+
+    /* =========================================================
+       CTA
+       ========================================================= */
+
+    .cta {
+      padding: 20px 0 100px;
+    }
+
+    .cta-card {
+      position: relative;
+      overflow: hidden;
+      padding: 55px 30px;
+      text-align: center;
+      border-radius: 30px;
+      border: 1px solid rgba(215, 173, 85, 0.25);
+      background:
+        linear-gradient(
+          135deg,
+          rgba(215, 173, 85, 0.09),
+          rgba(255, 255, 255, 0.018)
+        );
+    }
+
+    .cta-card::before {
+      content: "";
+      position: absolute;
+      width: 320px;
+      height: 320px;
+      top: -200px;
+      left: 50%;
+      transform: translateX(-50%);
+      border-radius: 50%;
+      background: rgba(215, 173, 85, 0.12);
+      filter: blur(80px);
+    }
+
+    .cta-card h2 {
+      position: relative;
+      font-size:
+        clamp(28px, 5vw, 45px);
+    }
+
+    .cta-card p {
+      position: relative;
+      max-width: 650px;
+      margin: 12px auto 24px;
+      color: var(--muted);
+    }
+
+    /* =========================================================
+       FOOTER
+       ========================================================= */
+
+    footer {
+      padding: 38px 0;
+      border-top: 1px solid var(--border-soft);
+      background: #05070a;
+    }
+
+    .footer-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 25px;
+    }
+
+    .footer-brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: var(--gold-2);
+      font-weight: 800;
+    }
+
+    .footer-copy {
+      color: var(--muted-2);
+      font-size: 11px;
+    }
+
+    .footer-links {
+      display: flex;
+      gap: 18px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    /* =========================================================
+       MODAL
+       ========================================================= */
+
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 100;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      background: rgba(0, 0, 0, 0.72);
+      backdrop-filter: blur(10px);
+    }
+
+    .modal-backdrop.show {
+      display: flex;
+    }
+
+    .modal {
+      width: min(100%, 470px);
+      padding: 27px;
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      background: #10141b;
+      box-shadow:
+        0 30px 100px rgba(0, 0, 0, 0.65);
+    }
+
+    .modal-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+    }
+
+    .modal h3 {
+      color: var(--gold-2);
+    }
+
+    .close-modal {
+      width: 36px;
+      height: 36px;
+      border: 1px solid var(--border-soft);
+      border-radius: 10px;
+      color: var(--text);
+      background: transparent;
+    }
+
+    .modal p {
+      margin-top: 15px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    /* =========================================================
+       MOBILE
+       ========================================================= */
+
+    @media (max-width: 960px) {
+      .nav-links {
+        display: none;
+      }
+
+      .extension-grid {
+        grid-template-columns:
+          repeat(2, minmax(0, 1fr));
+      }
+
+      .service-grid {
+        grid-template-columns:
+          repeat(2, minmax(0, 1fr));
+      }
+
+      .why-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 650px) {
+      .container {
+        width: min(
+          calc(100% - 22px),
+          var(--max-width)
+        );
+      }
+
+      .nav {
+        min-height: 68px;
+      }
+
+      .brand-text span {
+        display: none;
+      }
+
+      .outline-btn {
+        display: none;
+      }
+
+      .crown {
+        width: 42px;
+        height: 42px;
+      }
+
+      .hero {
+        min-height: auto;
+        padding: 65px 0 50px;
+      }
+
+      .hero h1 {
+        letter-spacing: -1px;
+      }
+
+      .hero-description {
+        font-size: 14px;
+      }
+
+      .domain-search {
+        flex-wrap: wrap;
+      }
+
+      .search-icon {
+        display: none;
+      }
+
+      .domain-search input {
+        width: 100%;
+        flex-basis: 100%;
+        padding: 13px 12px;
+      }
+
+      .search-btn {
+        width: 100%;
+      }
+
+      .extension-grid,
+      .service-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .network-card {
+        min-height: 350px;
+      }
+
+      .network-circle.three {
+        width: 310px;
+        height: 310px;
+      }
+
+      .footer-row {
+        flex-direction: column;
+        text-align: center;
+      }
+
+      .footer-links {
+        flex-wrap: wrap;
+        justify-content: center;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- =======================================================
+       PRIVATE PRE-LAUNCH STATUS
+       This UI is permanent.
+       Public exposure is controlled by backend/deployment.
+       ======================================================= -->
+
+  <div class="private-bar" id="privateBar">
+    <span class="private-dot"></span>
+    <span data-i18n="privateMode">
+      تشغيل خاص — الوصول العام غير مفعّل حاليًا
+    </span>
+  </div>
+
+  <!-- =======================================================
+       HEADER
+       ======================================================= -->
+
+  <header>
+    <div class="container nav">
+
+      <a class="brand" href="#home" aria-label="MAJD DMAIL">
+        <div class="crown">♛</div>
+
+        <div class="brand-text">
+          <strong>MAJD DMAIL</strong>
+          <span>DOMAIN SERVICES</span>
+        </div>
+      </a>
+
+      <nav class="nav-links">
+        <a href="#home" data-i18n="navHome">الرئيسية</a>
+        <a href="#domains" data-i18n="navDomains">النطاقات</a>
+        <a href="#services" data-i18n="navServices">الخدمات</a>
+        <a href="#security" data-i18n="navSecurity">الحماية</a>
+      </nav>
+
+      <div class="nav-actions">
+        <button
+          class="language-btn"
+          id="languageButton"
+          type="button"
+          aria-label="Change language"
+        >
+          EN
+        </button>
+
+        <button
+          class="outline-btn"
+          type="button"
+          onclick="showPrivateNotice()"
+          data-i18n="login"
+        >
+          تسجيل الدخول
+        </button>
+      </div>
+
+    </div>
+  </header>
+
+  <!-- =======================================================
+       HERO
+       ======================================================= -->
+
+  <main>
+
+    <section class="hero" id="home">
+      <div class="hero-glow"></div>
+
+      <div class="container hero-content">
+
+        <div class="hero-crown">♛</div>
+
+        <div class="eyebrow">
+          <span>◆</span>
+          <span data-i18n="eyebrow">
+            MAJD SOVEREIGN DOMAIN PLATFORM
+          </span>
+        </div>
+
+        <h1>
+          <span data-i18n="heroTitle1">
+            نطاقك هو بداية
+          </span>
+          <span class="gold" data-i18n="heroTitle2">
+            هويتك الرقمية
+          </span>
+        </h1>
+
+        <p
+          class="hero-description"
+          data-i18n="heroDescription"
+        >
+          منصة مجد لإدارة خدمات النطاقات باحترافية:
+          البحث والحجز والنقل والتجديد وإدارة DNS
+          والحماية، من تجربة موحدة وآمنة.
+        </p>
+
+        <div class="domain-search-wrap">
+          <form
+            class="domain-search"
+            id="domainSearchForm"
+          >
+            <div class="search-icon">⌕</div>
+
+            <input
+              id="domainInput"
+              type="text"
+              autocomplete="off"
+              spellcheck="false"
+              placeholder="example.com"
+              aria-label="Domain name"
+            />
+
+            <button
+              class="search-btn"
+              type="submit"
+              data-i18n="searchButton"
+            >
+              ابحث عن نطاق
+            </button>
+          </form>
+        </div>
+
+        <div
+          class="search-hint"
+          data-i18n="searchHint"
+        >
+          أدخل اسم النطاق الذي ترغب بالبحث عنه
+        </div>
+
+        <div
+          class="message"
+          id="systemMessage"
+          role="status"
+        ></div>
+
+      </div>
+    </section>
+
+    <!-- =====================================================
+         EXTENSIONS
+         Prices intentionally not fabricated.
+         Backend can populate real verified prices later.
+         ===================================================== -->
+
+    <section class="extensions" id="domains">
+      <div class="container">
+
+        <div class="section-head">
+          <span data-i18n="extensionsLabel">
+            DOMAIN EXTENSIONS
+          </span>
+
+          <h2 data-i18n="extensionsTitle">
+            اختر الامتداد المناسب لهويتك
+          </h2>
+
+          <p data-i18n="extensionsDescription">
+            الأسعار والتوفر يتم عرضهما من المزود الحقيقي
+            بعد اكتمال الربط والتحقق.
+          </p>
+        </div>
+
+        <div class="extension-grid">
+
+          <article class="extension-card">
+            <div class="extension-name">.com</div>
+            <p data-i18n="comText">
+              الخيار العالمي للأعمال والعلامات التجارية.
+            </p>
+            <div
+              class="extension-price"
+              data-i18n="verifiedPricing"
+            >
+              السعر يظهر بعد التحقق المباشر
+            </div>
+          </article>
+
+          <article class="extension-card">
+            <div class="extension-name">.net</div>
+            <p data-i18n="netText">
+              مناسب للخدمات الرقمية والمشاريع التقنية.
+            </p>
+            <div
+              class="extension-price"
+              data-i18n="verifiedPricing"
+            >
+              السعر يظهر بعد التحقق المباشر
+            </div>
+          </article>
+
+          <article class="extension-card">
+            <div class="extension-name">.org</div>
+            <p data-i18n="orgText">
+              خيار معروف للمنظمات والمبادرات والمجتمعات.
+            </p>
+            <div
+              class="extension-price"
+              data-i18n="verifiedPricing"
+            >
+              السعر يظهر بعد التحقق المباشر
+            </div>
+          </article>
+
+          <article class="extension-card">
+            <div class="extension-name">.ai</div>
+            <p data-i18n="aiText">
+              امتداد حديث للمشاريع والمنتجات التقنية.
+            </p>
+            <div
+              class="extension-price"
+              data-i18n="verifiedPricing"
+            >
+              السعر يظهر بعد التحقق المباشر
+            </div>
+          </article>
+
+        </div>
+      </div>
+    </section>
+
+    <!-- =====================================================
+         SERVICES
+         ===================================================== -->
+
+    <section class="services" id="services">
+      <div class="container">
+
+        <div class="section-head">
+          <span data-i18n="servicesLabel">
+            MAJD DMAIL SERVICES
+          </span>
+
+          <h2 data-i18n="servicesTitle">
+            كل ما يحتاجه نطاقك
+          </h2>
+
+          <p data-i18n="servicesDescription">
+            واجهة واحدة مصممة للربط مع خدمات
+            MAJD-DMAIL الخلفية.
+          </p>
+        </div>
+
+        <div class="service-grid">
+
+          <article class="service-card">
+            <div class="service-icon">⌕</div>
+            <h3 data-i18n="serviceSearchTitle">
+              البحث عن النطاقات
+            </h3>
+            <p data-i18n="serviceSearchText">
+              البحث عن توفر النطاق عبر موفر النطاقات
+              المرتبط بالنظام.
+            </p>
+            <span
+              class="service-state"
+              data-i18n="backendControlled"
+            >
+              الحالة يحددها النظام الخلفي
+            </span>
+          </article>
+
+          <article class="service-card">
+            <div class="service-icon">◇</div>
+            <h3 data-i18n="serviceRegisterTitle">
+              تسجيل النطاق
+            </h3>
+            <p data-i18n="serviceRegisterText">
+              إنشاء طلب تسجيل بعد التحقق الحقيقي
+              من التوفر والسعر.
+            </p>
+            <span
+              class="service-state"
+              data-i18n="backendControlled"
+            >
+              الحالة يحددها النظام الخلفي
+            </span>
+          </article>
+
+          <article class="service-card">
+            <div class="service-icon">↻</div>
+            <h3 data-i18n="serviceRenewTitle">
+              التجديد
+            </h3>
+            <p data-i18n="serviceRenewText">
+              إدارة تجديد النطاقات ومتابعة حالتها
+              من خلال النظام.
+            </p>
+            <span
+              class="service-state"
+              data-i18n="backendControlled"
+            >
+              الحالة يحددها النظام الخلفي
+            </span>
+          </article>
+
+          <article class="service-card">
+            <div class="service-icon">⇄</div>
+            <h3 data-i18n="serviceTransferTitle">
+              نقل النطاق
+            </h3>
+            <p data-i18n="serviceTransferText">
+              تدفق مخصص لطلبات نقل النطاق والتحقق
+              من متطلبات النقل.
+            </p>
+            <span
+              class="service-state"
+              data-i18n="backendControlled"
+            >
+              الحالة يحددها النظام الخلفي
+            </span>
+          </article>
+
+          <article class="service-card">
+            <div class="service-icon">◎</div>
+            <h3 data-i18n="serviceDnsTitle">
+              إدارة DNS
+            </h3>
+            <p data-i18n="serviceDnsText">
+              إدارة سجلات DNS من خلال موفر فعلي
+              عند ربط الخدمة.
+            </p>
+            <span
+              class="service-state"
+              data-i18n="backendControlled"
+            >
+              الحالة يحددها النظام الخلفي
+            </span>
+          </article>
+
+          <article class="service-card">
+            <div class="service-icon">♢</div>
+            <h3 data-i18n="serviceSslTitle">
+              SSL / TLS
+            </h3>
+            <p data-i18n="serviceSslText">
+              إدارة حالة الشهادات والحماية المرتبطة
+              بالنطاقات.
+            </p>
+            <span
+              class="service-state"
+              data-i18n="backendControlled"
+            >
+              الحالة يحددها النظام الخلفي
+            </span>
+          </article>
+
+        </div>
+      </div>
+    </section>
+
+    <!-- =====================================================
+         SECURITY / PLATFORM
+         ===================================================== -->
+
+    <section class="why" id="security">
+      <div class="container why-grid">
+
+        <div class="why-copy">
+
+          <div class="eyebrow">
+            <span>♛</span>
+            <span>MAJD DMAIL</span>
+          </div>
+
+          <h2>
+            <span data-i18n="whyTitle1">
+              منصة واحدة.
+            </span>
+            <span data-i18n="whyTitle2">
+              تحكم أوضح.
+            </span>
+          </h2>
+
+          <p data-i18n="whyDescription">
+            صُممت الواجهة لتعمل فوق البنية الخلفية
+            لـ MAJD-DMAIL مع فصل واضح بين تجربة
+            العملاء وإدارة المالك.
+          </p>
+
+          <div class="feature-list">
+
+            <div class="feature-item">
+              <div class="check">✓</div>
+              <div>
+                <strong data-i18n="feature1Title">
+                  تحقق حقيقي من الخدمات
+                </strong>
+                <small data-i18n="feature1Text">
+                  لا يتم اعتبار أي مزود خارجي متاحًا
+                  قبل نجاح التحقق الفعلي.
+                </small>
+              </div>
+            </div>
+
+            <div class="feature-item">
+              <div class="check">✓</div>
+              <div>
+                <strong data-i18n="feature2Title">
+                  إدارة دورة حياة النطاق
+                </strong>
+                <small data-i18n="feature2Text">
+                  من البحث والتسجيل إلى النقل
+                  والتجديد والإدارة.
+                </small>
+              </div>
+            </div>
+
+            <div class="feature-item">
+              <div class="check">✓</div>
+              <div>
+                <strong data-i18n="feature3Title">
+                  تصميم عالمي
+                </strong>
+                <small data-i18n="feature3Text">
+                  تجربة عربية وإنجليزية دون ربط
+                  المنصة بدولة واحدة.
+                </small>
+              </div>
+            </div>
+
+            <div class="feature-item">
+              <div class="check">✓</div>
+              <div>
+                <strong data-i18n="feature4Title">
+                  فصل إدارة المالك
+                </strong>
+                <small data-i18n="feature4Text">
+                  لا توجد لوحة المالك داخل واجهة
+                  الجمهور.
+                </small>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <div class="network-card">
+          <div class="network-circle one"></div>
+          <div class="network-circle two"></div>
+          <div class="network-circle three"></div>
+
+          <div class="network-center">♛</div>
+
+          <div class="network-label label-1">
+            DOMAIN
+          </div>
+
+          <div class="network-label label-2">
+            DNS
+          </div>
+
+          <div class="network-label label-3">
+            SSL
+          </div>
+
+          <div class="network-label label-4">
+            SECURITY
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- =====================================================
+         CTA
+         ===================================================== -->
+
+    <section class="cta">
+      <div class="container">
+
+        <div class="cta-card">
+          <h2 data-i18n="ctaTitle">
+            ابنِ هويتك الرقمية من اسمها
+          </h2>
+
+          <p data-i18n="ctaText">
+            ابحث عن نطاقك، وتحقق من توفره،
+            ثم أكمل العملية عبر خدمات MAJD-DMAIL
+            عند تفعيل الربط الفعلي.
+          </p>
+
+          <button
+            class="primary-btn"
+            type="button"
+            onclick="focusDomainSearch()"
+            data-i18n="ctaButton"
+          >
+            ابحث عن نطاقك
+          </button>
+        </div>
+
+      </div>
+    </section>
+
+  </main>
+
+  <!-- =======================================================
+       FOOTER
+       ======================================================= -->
+
+  <footer>
+    <div class="container footer-row">
+
+      <div>
+        <div class="footer-brand">
+          <span>♛</span>
+          <span>MAJD DMAIL</span>
+        </div>
+
+        <div class="footer-copy">
+          © <span id="year"></span>
+          MAJD DMAIL.
+          <span data-i18n="rights">
+            جميع الحقوق محفوظة.
+          </span>
+        </div>
+      </div>
+
+      <div class="footer-links">
+        <a href="#domains" data-i18n="navDomains">
+          النطاقات
+        </a>
+        <a href="#services" data-i18n="navServices">
+          الخدمات
+        </a>
+        <a href="#security" data-i18n="navSecurity">
+          الحماية
+        </a>
+      </div>
+
+    </div>
+  </footer>
+
+  <!-- =======================================================
+       PRIVATE MODE MODAL
+       ======================================================= -->
+
+  <div
+    class="modal-backdrop"
+    id="privateModal"
+    aria-hidden="true"
+  >
+    <div class="modal">
+
+      <div class="modal-top">
+        <h3 data-i18n="privateTitle">
+          التشغيل الخاص
+        </h3>
+
+        <button
+          class="close-modal"
+          type="button"
+          onclick="closePrivateNotice()"
+          aria-label="Close"
+        >
+          ×
+        </button>
+      </div>
+
+      <p data-i18n="privateText">
+        المنصة في وضع التشغيل الخاص حاليًا.
+        الوصول العام والحسابات العامة يتم تفعيلها
+        من النظام الخلفي عند الإطلاق الرسمي.
+      </p>
+
+    </div>
+  </div>
+
+  <script>
+    "use strict";
+
+    /* =========================================================
+       MAJD DMAIL OFFICIAL UI CONFIGURATION
+       ========================================================= */
+
+    const MAJD_DMAIL_UI = Object.freeze({
+      project: "MAJD-DMAIL",
+      interface: "MAJD-DMAIL-OFFICIAL-UI",
+      version: "1.0.0",
+
+      launchMode: "PRIVATE",
+
+      publicLaunchEnabled: false,
+
+      ownerDashboardExposed: false,
+
+      api: {
+        baseUrl: "",
+        domainSearch: "/api/domains/search",
+        domainRegister: "/api/domains/register",
+        domainRenew: "/api/domains/renew",
+        domainTransfer: "/api/domains/transfer",
+        dns: "/api/domains/dns",
+        ssl: "/api/domains/ssl",
+        health: "/api/health"
+      }
+    });
+
+    /* =========================================================
+       TRANSLATIONS
+       ========================================================= */
+
+    const translations = {
+      ar: {
+        privateMode:
+          "تشغيل خاص — الوصول العام غير مفعّل حاليًا",
+
+        navHome: "الرئيسية",
+        navDomains: "النطاقات",
+        navServices: "الخدمات",
+        navSecurity: "الحماية",
+
+        login: "تسجيل الدخول",
+
+        eyebrow:
+          "MAJD SOVEREIGN DOMAIN PLATFORM",
+
+        heroTitle1:
+          "نطاقك هو بداية ",
+
+        heroTitle2:
+          "هويتك الرقمية",
+
+        heroDescription:
+          "منصة مجد لإدارة خدمات النطاقات باحترافية: البحث والحجز والنقل والتجديد وإدارة DNS والحماية، من تجربة موحدة وآمنة.",
+
+        searchButton:
+          "ابحث عن نطاق",
+
+        searchHint:
+          "أدخل اسم النطاق الذي ترغب بالبحث عنه",
+
+        extensionsLabel:
+          "DOMAIN EXTENSIONS",
+
+        extensionsTitle:
+          "اختر الامتداد المناسب لهويتك",
+
+        extensionsDescription:
+          "الأسعار والتوفر يتم عرضهما من المزود الحقيقي بعد اكتمال الربط والتحقق.",
+
+        comText:
+          "الخيار العالمي للأعمال والعلامات التجارية.",
+
+        netText:
+          "مناسب للخدمات الرقمية والمشاريع التقنية.",
+
+        orgText:
+          "خيار معروف للمنظمات والمبادرات والمجتمعات.",
+
+        aiText:
+          "امتداد حديث للمشاريع والمنتجات التقنية.",
+
+        verifiedPricing:
+          "السعر يظهر بعد التحقق المباشر",
+
+        servicesLabel:
+          "MAJD DMAIL SERVICES",
+
+        servicesTitle:
+          "كل ما يحتاجه نطاقك",
+
+        servicesDescription:
+          "واجهة واحدة مصممة للربط مع خدمات MAJD-DMAIL الخلفية.",
+
+        serviceSearchTitle:
+          "البحث عن النطاقات",
+
+        serviceSearchText:
+          "البحث عن توفر النطاق عبر موفر النطاقات المرتبط بالنظام.",
+
+        serviceRegisterTitle:
+          "تسجيل النطاق",
+
+        serviceRegisterText:
+          "إنشاء طلب تسجيل بعد التحقق الحقيقي من التوفر والسعر.",
+
+        serviceRenewTitle:
+          "التجديد",
+
+        serviceRenewText:
+          "إدارة تجديد النطاقات ومتابعة حالتها من خلال النظام.",
+
+        serviceTransferTitle:
+          "نقل النطاق",
+
+        serviceTransferText:
+          "تدفق مخصص لطلبات نقل النطاق والتحقق من متطلبات النقل.",
+
+        serviceDnsTitle:
+          "إدارة DNS",
+
+        serviceDnsText:
+          "إدارة سجلات DNS من خلال موفر فعلي عند ربط الخدمة.",
+
+        serviceSslTitle:
+          "SSL / TLS",
+
+        serviceSslText:
+          "إدارة حالة الشهادات والحماية المرتبطة بالنطاقات.",
+
+        backendControlled:
+          "الحالة يحددها النظام الخلفي",
+
+        whyTitle1:
+          "منصة واحدة. ",
+
+        whyTitle2:
+          "تحكم أوضح.",
+
+        whyDescription:
+          "صُممت الواجهة لتعمل فوق البنية الخلفية لـ MAJD-DMAIL مع فصل واضح بين تجربة العملاء وإدارة المالك.",
+
+        feature1Title:
+          "تحقق حقيقي من الخدمات",
+
+        feature1Text:
+          "لا يتم اعتبار أي مزود خارجي متاحًا قبل نجاح التحقق الفعلي.",
+
+        feature2Title:
+          "إدارة دورة حياة النطاق",
+
+        feature2Text:
+          "من البحث والتسجيل إلى النقل والتجديد والإدارة.",
+
+        feature3Title:
+          "تصميم عالمي",
+
+        feature3Text:
+          "تجربة عربية وإنجليزية دون ربط المنصة بدولة واحدة.",
+
+        feature4Title:
+          "فصل إدارة المالك",
+
+        feature4Text:
+          "لا توجد لوحة المالك داخل واجهة الجمهور.",
+
+        ctaTitle:
+          "ابنِ هويتك الرقمية من اسمها",
+
+        ctaText:
+          "ابحث عن نطاقك، وتحقق من توفره، ثم أكمل العملية عبر خدمات MAJD-DMAIL عند تفعيل الربط الفعلي.",
+
+        ctaButton:
+          "ابحث عن نطاقك",
+
+        rights:
+          "جميع الحقوق محفوظة.",
+
+        privateTitle:
+          "التشغيل الخاص",
+
+        privateText:
+          "المنصة في وضع التشغيل الخاص حاليًا. الوصول العام والحسابات العامة يتم تفعيلها من النظام الخلفي عند الإطلاق الرسمي.",
+
+        invalidDomain:
+          "اكتب اسم نطاق صحيح مثل example.com",
+
+        searching:
+          "جاري إرسال طلب البحث إلى نظام MAJD-DMAIL...",
+
+        apiNotConnected:
+          "الواجهة جاهزة. خدمة البحث الخلفية لم يتم ربطها أو التحقق منها بعد.",
+
+        searchFailed:
+          "تعذر إكمال البحث حاليًا. لن يتم عرض نتيجة غير موثقة."
+      },
+
+      en: {
+        privateMode:
+          "Private operation — public access is currently disabled",
+
+        navHome: "Home",
+        navDomains: "Domains",
+        navServices: "Services",
+        navSecurity: "Security",
+
+        login: "Sign in",
+
+        eyebrow:
+          "MAJD SOVEREIGN DOMAIN PLATFORM",
+
+        heroTitle1:
+          "Your domain begins ",
+
+        heroTitle2:
+          "your digital identity",
+
+        heroDescription:
+          "MAJD DMAIL provides a unified experience for domain search, registration, transfer, renewal, DNS management and protection.",
+
+        searchButton:
+          "Search Domain",
+
+        searchHint:
+          "Enter the domain name you want to search",
+
+        extensionsLabel:
+          "DOMAIN EXTENSIONS",
+
+        extensionsTitle:
+          "Choose the extension for your identity",
+
+        extensionsDescription:
+          "Availability and pricing are shown only from a real verified provider connection.",
+
+        comText:
+          "A global choice for businesses and brands.",
+
+        netText:
+          "Suitable for digital and technology projects.",
+
+        orgText:
+          "A recognized choice for organizations and communities.",
+
+        aiText:
+          "A modern extension for technology products and projects.",
+
+        verifiedPricing:
+          "Price shown after live verification",
+
+        servicesLabel:
+          "MAJD DMAIL SERVICES",
+
+        servicesTitle:
+          "Everything your domain needs",
+
+        servicesDescription:
+          "One interface designed to connect with the MAJD-DMAIL backend.",
+
+        serviceSearchTitle:
+          "Domain Search",
+
+        serviceSearchText:
+          "Check domain availability through the provider connected to the platform.",
+
+        serviceRegisterTitle:
+          "Domain Registration",
+
+        serviceRegisterText:
+          "Create a registration request after verified availability and pricing.",
+
+        serviceRenewTitle:
+          "Renewal",
+
+        serviceRenewText:
+          "Manage domain renewals and their lifecycle through the platform.",
+
+        serviceTransferTitle:
+          "Domain Transfer",
+
+        serviceTransferText:
+          "A dedicated flow for domain transfer requests and requirements.",
+
+        serviceDnsTitle:
+          "DNS Management",
+
+        serviceDnsText:
+          "Manage DNS records through a real provider when connected.",
+
+        serviceSslTitle:
+          "SSL / TLS",
+
+        serviceSslText:
+          "Manage certificate and protection status associated with domains.",
+
+        backendControlled:
+          "Status controlled by backend",
+
+        whyTitle1:
+          "One platform. ",
+
+        whyTitle2:
+          "Clearer control.",
+
+        whyDescription:
+          "The interface is designed to operate on top of the MAJD-DMAIL backend with clear separation between customer experience and owner administration.",
+
+        feature1Title:
+          "Real service verification",
+
+        feature1Text:
+          "No external provider is considered operational before real health verification succeeds.",
+
+        feature2Title:
+          "Domain lifecycle management",
+
+        feature2Text:
+          "From search and registration to transfer, renewal and management.",
+
+        feature3Title:
+          "Global design",
+
+        feature3Text:
+          "Arabic and English experience without tying the platform to one country.",
+
+        feature4Title:
+          "Separated owner administration",
+
+        feature4Text:
+          "The owner dashboard is not exposed through the public interface.",
+
+        ctaTitle:
+          "Build your digital identity from its name",
+
+        ctaText:
+          "Search for your domain, verify availability, and continue through MAJD-DMAIL services when the real integration is activated.",
+
+        ctaButton:
+          "Search Your Domain",
+
+        rights:
+          "All rights reserved.",
+
+        privateTitle:
+          "Private Operation",
+
+        privateText:
+          "The platform is currently operating privately. Public access and public accounts are activated by the backend at official launch.",
+
+        invalidDomain:
+          "Enter a valid domain such as example.com",
+
+        searching:
+          "Sending the search request to MAJD-DMAIL...",
+
+        apiNotConnected:
+          "The interface is ready. The backend domain search service has not yet been connected or verified.",
+
+        searchFailed:
+          "The search could not be completed. No unverified result will be displayed."
+      }
+    };
+
+    let currentLanguage = "ar";
+
+    /* =========================================================
+       LANGUAGE
+       ========================================================= */
+
+    function applyLanguage(language) {
+      const dictionary = translations[language];
+
+      if (!dictionary) {
+        return;
+      }
+
+      currentLanguage = language;
+
+      document.documentElement.lang = language;
+      document.documentElement.dir =
+        language === "ar" ? "rtl" : "ltr";
+
+      document
+        .querySelectorAll("[data-i18n]")
+        .forEach((element) => {
+          const key =
+            element.getAttribute("data-i18n");
+
+          if (
+            Object.prototype.hasOwnProperty.call(
+              dictionary,
+              key
+            )
+          ) {
+            element.textContent =
+              dictionary[key];
+          }
+        });
+
+      document.getElementById(
+        "languageButton"
+      ).textContent =
+        language === "ar" ? "EN" : "AR";
+    }
+
+    document
+      .getElementById("languageButton")
+      .addEventListener(
+        "click",
+        () => {
+          applyLanguage(
+            currentLanguage === "ar"
+              ? "en"
+              : "ar"
+          );
+        }
+      );
+
+    /* =========================================================
+       DOMAIN VALIDATION
+       ========================================================= */
+
+    function normalizeDomain(value) {
+      return value
+        .trim()
+        .toLowerCase()
+        .replace(/^https?:\/\//, "")
+        .replace(/^www\./, "")
+        .split("/")[0];
+    }
+
+    function isValidDomain(domain) {
+      if (
+        !domain ||
+        domain.length > 253 ||
+        !domain.includes(".")
+      ) {
+        return false;
+      }
+
+      const labels = domain.split(".");
+
+      if (labels.length < 2) {
+        return false;
+      }
+
+      const labelPattern =
+        /^(?!-)[a-z0-9-]{1,63}(?<!-)$/i;
+
+      return labels.every(
+        (label) =>
+          labelPattern.test(label)
+      );
+    }
+
+    /* =========================================================
+       MESSAGE
+       ========================================================= */
+
+    function showMessage(
+      text,
+      type = "info"
+    ) {
+      const message =
+        document.getElementById(
+          "systemMessage"
+        );
+
+      message.className =
+        `message show ${type}`;
+
+      message.textContent = text;
+    }
+
+    function clearMessage() {
+      const message =
+        document.getElementById(
+          "systemMessage"
+        );
+
+      message.className = "message";
+      message.textContent = "";
+    }
+
+    /* =========================================================
+       API HELPER
+       ========================================================= */
+
+    async function requestJson(
+      path,
+      options = {}
+    ) {
+      const url =
+        `${MAJD_DMAIL_UI.api.baseUrl}${path}`;
+
+      const response = await fetch(
+        url,
+        {
+          ...options,
+          headers: {
+            "Accept":
+              "application/json",
+            "Content-Type":
+              "application/json",
+            ...(options.headers || {})
+          }
+        }
+      );
+
+      let payload = null;
+
+      try {
+        payload =
+          await response.json();
+      } catch (_) {
+        payload = null;
+      }
+
+      if (!response.ok) {
+        const error =
+          new Error(
+            payload?.message ||
+            payload?.error ||
+            `HTTP ${response.status}`
+          );
+
+        error.status =
+          response.status;
+
+        error.payload =
+          payload;
+
+        throw error;
+      }
+
+      return payload;
+    }
+
+    /* =========================================================
+       DOMAIN SEARCH
+       No fake fallback.
+       ========================================================= */
+
+    async function searchDomain(domain) {
+      const endpoint =
+        MAJD_DMAIL_UI.api.domainSearch;
+
+      return requestJson(
+        `${endpoint}?domain=${encodeURIComponent(
+          domain
+        )}`,
+        {
+          method: "GET"
+        }
+      );
+    }
+
+    document
+      .getElementById(
+        "domainSearchForm"
+      )
+      .addEventListener(
+        "submit",
+        async (event) => {
+          event.preventDefault();
+
+          clearMessage();
+
+          const input =
+            document.getElementById(
+              "domainInput"
+            );
+
+          const domain =
+            normalizeDomain(
+              input.value
+            );
+
+          input.value = domain;
+
+          if (!isValidDomain(domain)) {
+            showMessage(
+              translations[
+                currentLanguage
+              ].invalidDomain,
+              "error"
+            );
+
+            return;
+          }
+
+          showMessage(
+            translations[
+              currentLanguage
+            ].searching,
+            "info"
+          );
+
+          try {
+            const result =
+              await searchDomain(domain);
+
+            /*
+             * The backend owns truth.
+             * We only render a result if
+             * it explicitly returns a
+             * verified response.
+             */
+
+            if (
+              !result ||
+              result.verified !== true
+            ) {
+              showMessage(
+                translations[
+                  currentLanguage
+                ].apiNotConnected,
+                "warning"
+              );
+
+              return;
+            }
+
+            const available =
+              result.available === true;
+
+            const statusText =
+              available
+                ? (
+                    currentLanguage === "ar"
+                      ? `${domain} متاح حسب التحقق المباشر.`
+                      : `${domain} is available according to live verification.`
+                  )
+                : (
+                    currentLanguage === "ar"
+                      ? `${domain} غير متاح حسب التحقق المباشر.`
+                      : `${domain} is unavailable according to live verification.`
+                  );
+
+            let priceText = "";
+
+            if (
+              result.price &&
+              result.currency
+            ) {
+              priceText =
+                currentLanguage === "ar"
+                  ? ` السعر: ${result.price} ${result.currency}.`
+                  : ` Price: ${result.price} ${result.currency}.`;
+            }
+
+            showMessage(
+              statusText + priceText,
+              available
+                ? "info"
+                : "warning"
+            );
+
+          } catch (error) {
+            /*
+             * During PRIVATE mode the
+             * backend route may not yet
+             * exist. Never invent a
+             * domain result.
+             */
+
+            if (
+              error instanceof TypeError ||
+              error.status === 404 ||
+              error.status === 501 ||
+              error.status === 503
+            ) {
+              showMessage(
+                translations[
+                  currentLanguage
+                ].apiNotConnected,
+                "warning"
+              );
+
+              return;
+            }
+
+            showMessage(
+              translations[
+                currentLanguage
+              ].searchFailed,
+              "error"
+            );
+          }
+        }
+      );
+
+    /* =========================================================
+       PRIVATE MODE
+       ========================================================= */
+
+    function showPrivateNotice() {
+      const modal =
+        document.getElementById(
+          "privateModal"
+        );
+
+      modal.classList.add("show");
+      modal.setAttribute(
+        "aria-hidden",
+        "false"
+      );
+    }
+
+    function closePrivateNotice() {
+      const modal =
+        document.getElementById(
+          "privateModal"
+        );
+
+      modal.classList.remove("show");
+      modal.setAttribute(
+        "aria-hidden",
+        "true"
+      );
+    }
+
+    document
+      .getElementById(
+        "privateModal"
+      )
+      .addEventListener(
+        "click",
+        (event) => {
+          if (
+            event.target.id ===
+            "privateModal"
+          ) {
+            closePrivateNotice();
+          }
+        }
+      );
+
+    document.addEventListener(
+      "keydown",
+      (event) => {
+        if (event.key === "Escape") {
+          closePrivateNotice();
+        }
+      }
+    );
+
+    /* =========================================================
+       UTILITIES
+       ========================================================= */
+
+    function focusDomainSearch() {
+      const input =
+        document.getElementById(
+          "domainInput"
+        );
+
+      input.scrollIntoView({
+        behavior: "smooth",
+        block: "center"
+      });
+
+      window.setTimeout(
+        () => input.focus(),
+        450
+      );
+    }
+
+    /* =========================================================
+       INITIALIZATION
+       ========================================================= */
+
+    document.getElementById(
+      "year"
+    ).textContent =
+      new Date().getFullYear();
+
+    applyLanguage("ar");
+
+    /*
+     * Security rule:
+     * Owner administration is intentionally
+     * not exposed in this interface.
+     *
+     * Launch rule:
+     * PRIVATE is the current mode.
+     * Public launch must be controlled by
+     * the backend/deployment layer, not by
+     * pretending to secure it in frontend JS.
+     */
+  </script>
+
+</body>
+</html>
