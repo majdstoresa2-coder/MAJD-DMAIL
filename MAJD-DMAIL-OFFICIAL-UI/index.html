@@ -12,12 +12,6 @@
   <title>MAJD DMAIL | منصة مجد للنطاقات</title>
 
   <style>
-    /* =========================================================
-       MAJD DMAIL OFFICIAL UI
-       Permanent public-facing interface
-       PRIVATE launch mode by default
-       ========================================================= */
-
     :root {
       --bg: #06080c;
       --bg-soft: #0b0e14;
@@ -44,8 +38,7 @@
       --radius: 22px;
       --radius-small: 14px;
 
-      --shadow:
-        0 20px 60px rgba(0, 0, 0, 0.38);
+      --shadow: 0 20px 60px rgba(0, 0, 0, 0.38);
 
       --max-width: 1240px;
     }
@@ -120,16 +113,9 @@
     }
 
     .container {
-      width: min(
-        calc(100% - 32px),
-        var(--max-width)
-      );
+      width: min(calc(100% - 32px), var(--max-width));
       margin-inline: auto;
     }
-
-    /* =========================================================
-       PRIVATE MODE BAR
-       ========================================================= */
 
     .private-bar {
       position: relative;
@@ -155,13 +141,8 @@
       margin-inline: 6px;
       border-radius: 50%;
       background: var(--green);
-      box-shadow:
-        0 0 12px rgba(54, 211, 153, 0.8);
+      box-shadow: 0 0 12px rgba(54, 211, 153, 0.8);
     }
-
-    /* =========================================================
-       HEADER
-       ========================================================= */
 
     header {
       position: sticky;
@@ -272,8 +253,7 @@
           var(--gold-2),
           var(--gold)
         );
-      box-shadow:
-        0 8px 30px rgba(215, 173, 85, 0.16);
+      box-shadow: 0 8px 30px rgba(215, 173, 85, 0.16);
       transition:
         transform 0.2s ease,
         box-shadow 0.2s ease;
@@ -281,13 +261,8 @@
 
     .primary-btn:hover {
       transform: translateY(-1px);
-      box-shadow:
-        0 12px 35px rgba(215, 173, 85, 0.23);
+      box-shadow: 0 12px 35px rgba(215, 173, 85, 0.23);
     }
-
-    /* =========================================================
-       HERO
-       ========================================================= */
 
     .hero {
       position: relative;
@@ -337,8 +312,7 @@
           rgba(215, 173, 85, 0.16),
           rgba(215, 173, 85, 0.02)
         );
-      box-shadow:
-        0 0 70px rgba(215, 173, 85, 0.13);
+      box-shadow: 0 0 70px rgba(215, 173, 85, 0.13);
     }
 
     .eyebrow {
@@ -358,16 +332,14 @@
     .hero h1 {
       max-width: 900px;
       margin: auto;
-      font-size:
-        clamp(38px, 7vw, 76px);
+      font-size: clamp(38px, 7vw, 76px);
       line-height: 1.13;
       letter-spacing: -2px;
     }
 
     .hero h1 .gold {
       color: var(--gold-2);
-      text-shadow:
-        0 0 40px rgba(215, 173, 85, 0.14);
+      text-shadow: 0 0 40px rgba(215, 173, 85, 0.14);
     }
 
     .hero-description {
@@ -376,10 +348,6 @@
       color: var(--muted);
       font-size: 17px;
     }
-
-    /* =========================================================
-       SEARCH
-       ========================================================= */
 
     .domain-search-wrap {
       max-width: 900px;
@@ -439,24 +407,26 @@
         );
     }
 
+    .search-btn:disabled {
+      cursor: wait;
+      opacity: 0.65;
+    }
+
     .search-hint {
       margin-top: 12px;
       color: var(--muted-2);
       font-size: 12px;
     }
 
-    /* =========================================================
-       STATUS MESSAGE
-       ========================================================= */
-
     .message {
       display: none;
       max-width: 900px;
       margin: 18px auto 0;
-      padding: 14px 16px;
+      padding: 16px;
       text-align: start;
       border-radius: 14px;
       font-size: 14px;
+      overflow-wrap: anywhere;
     }
 
     .message.show {
@@ -467,6 +437,12 @@
       color: #cbd5e1;
       border: 1px solid rgba(96, 165, 250, 0.25);
       background: rgba(96, 165, 250, 0.07);
+    }
+
+    .message.success {
+      color: #b8f7dc;
+      border: 1px solid rgba(54, 211, 153, 0.30);
+      background: rgba(54, 211, 153, 0.08);
     }
 
     .message.warning {
@@ -480,10 +456,6 @@
       border: 1px solid rgba(255, 107, 107, 0.25);
       background: rgba(255, 107, 107, 0.07);
     }
-
-    /* =========================================================
-       DOMAIN EXTENSIONS
-       ========================================================= */
 
     .extensions {
       padding: 20px 0 90px;
@@ -504,8 +476,7 @@
 
     .section-head h2 {
       margin-top: 7px;
-      font-size:
-        clamp(28px, 5vw, 42px);
+      font-size: clamp(28px, 5vw, 42px);
     }
 
     .section-head p {
@@ -516,8 +487,7 @@
 
     .extension-grid {
       display: grid;
-      grid-template-columns:
-        repeat(4, minmax(0, 1fr));
+      grid-template-columns: repeat(4, minmax(0, 1fr));
       gap: 15px;
     }
 
@@ -581,10 +551,6 @@
       font-size: 12px;
     }
 
-    /* =========================================================
-       SERVICES
-       ========================================================= */
-
     .services {
       padding: 85px 0;
       border-top: 1px solid var(--border-soft);
@@ -599,8 +565,7 @@
 
     .service-grid {
       display: grid;
-      grid-template-columns:
-        repeat(3, minmax(0, 1fr));
+      grid-template-columns: repeat(3, minmax(0, 1fr));
       gap: 18px;
     }
 
@@ -646,25 +611,19 @@
       background: rgba(255, 255, 255, 0.025);
     }
 
-    /* =========================================================
-       WHY MAJD
-       ========================================================= */
-
     .why {
       padding: 90px 0;
     }
 
     .why-grid {
       display: grid;
-      grid-template-columns:
-        1fr 1fr;
+      grid-template-columns: 1fr 1fr;
       gap: 45px;
       align-items: center;
     }
 
     .why-copy h2 {
-      font-size:
-        clamp(30px, 5vw, 48px);
+      font-size: clamp(30px, 5vw, 48px);
       line-height: 1.25;
     }
 
@@ -765,8 +724,7 @@
       font-size: 52px;
       border: 1px solid rgba(215, 173, 85, 0.30);
       background: #11151d;
-      box-shadow:
-        0 0 80px rgba(215, 173, 85, 0.18);
+      box-shadow: 0 0 80px rgba(215, 173, 85, 0.18);
     }
 
     .network-label {
@@ -802,10 +760,6 @@
       transform: translateX(-50%);
     }
 
-    /* =========================================================
-       CTA
-       ========================================================= */
-
     .cta {
       padding: 20px 0 100px;
     }
@@ -825,23 +779,9 @@
         );
     }
 
-    .cta-card::before {
-      content: "";
-      position: absolute;
-      width: 320px;
-      height: 320px;
-      top: -200px;
-      left: 50%;
-      transform: translateX(-50%);
-      border-radius: 50%;
-      background: rgba(215, 173, 85, 0.12);
-      filter: blur(80px);
-    }
-
     .cta-card h2 {
       position: relative;
-      font-size:
-        clamp(28px, 5vw, 45px);
+      font-size: clamp(28px, 5vw, 45px);
     }
 
     .cta-card p {
@@ -850,10 +790,6 @@
       margin: 12px auto 24px;
       color: var(--muted);
     }
-
-    /* =========================================================
-       FOOTER
-       ========================================================= */
 
     footer {
       padding: 38px 0;
@@ -888,10 +824,6 @@
       font-size: 12px;
     }
 
-    /* =========================================================
-       MODAL
-       ========================================================= */
-
     .modal-backdrop {
       position: fixed;
       inset: 0;
@@ -914,8 +846,7 @@
       border: 1px solid var(--border);
       border-radius: 24px;
       background: #10141b;
-      box-shadow:
-        0 30px 100px rgba(0, 0, 0, 0.65);
+      box-shadow: 0 30px 100px rgba(0, 0, 0, 0.65);
     }
 
     .modal-top {
@@ -944,23 +875,17 @@
       font-size: 13px;
     }
 
-    /* =========================================================
-       MOBILE
-       ========================================================= */
-
     @media (max-width: 960px) {
       .nav-links {
         display: none;
       }
 
       .extension-grid {
-        grid-template-columns:
-          repeat(2, minmax(0, 1fr));
+        grid-template-columns: repeat(2, minmax(0, 1fr));
       }
 
       .service-grid {
-        grid-template-columns:
-          repeat(2, minmax(0, 1fr));
+        grid-template-columns: repeat(2, minmax(0, 1fr));
       }
 
       .why-grid {
@@ -970,10 +895,7 @@
 
     @media (max-width: 650px) {
       .container {
-        width: min(
-          calc(100% - 22px),
-          var(--max-width)
-        );
+        width: min(calc(100% - 22px), var(--max-width));
       }
 
       .nav {
@@ -1053,22 +975,12 @@
 
 <body>
 
-  <!-- =======================================================
-       PRIVATE PRE-LAUNCH STATUS
-       This UI is permanent.
-       Public exposure is controlled by backend/deployment.
-       ======================================================= -->
-
   <div class="private-bar" id="privateBar">
     <span class="private-dot"></span>
     <span data-i18n="privateMode">
       تشغيل خاص — الوصول العام غير مفعّل حاليًا
     </span>
   </div>
-
-  <!-- =======================================================
-       HEADER
-       ======================================================= -->
 
   <header>
     <div class="container nav">
@@ -1094,7 +1006,6 @@
           class="language-btn"
           id="languageButton"
           type="button"
-          aria-label="Change language"
         >
           EN
         </button>
@@ -1112,10 +1023,6 @@
     </div>
   </header>
 
-  <!-- =======================================================
-       HERO
-       ======================================================= -->
-
   <main>
 
     <section class="hero" id="home">
@@ -1127,15 +1034,14 @@
 
         <div class="eyebrow">
           <span>◆</span>
-          <span data-i18n="eyebrow">
-            MAJD SOVEREIGN DOMAIN PLATFORM
-          </span>
+          <span>MAJD SOVEREIGN DOMAIN PLATFORM</span>
         </div>
 
         <h1>
           <span data-i18n="heroTitle1">
             نطاقك هو بداية
           </span>
+
           <span class="gold" data-i18n="heroTitle2">
             هويتك الرقمية
           </span>
@@ -1151,6 +1057,7 @@
         </p>
 
         <div class="domain-search-wrap">
+
           <form
             class="domain-search"
             id="domainSearchForm"
@@ -1168,12 +1075,14 @@
 
             <button
               class="search-btn"
+              id="searchButton"
               type="submit"
               data-i18n="searchButton"
             >
               ابحث عن نطاق
             </button>
           </form>
+
         </div>
 
         <div
@@ -1192,19 +1101,11 @@
       </div>
     </section>
 
-    <!-- =====================================================
-         EXTENSIONS
-         Prices intentionally not fabricated.
-         Backend can populate real verified prices later.
-         ===================================================== -->
-
     <section class="extensions" id="domains">
       <div class="container">
 
         <div class="section-head">
-          <span data-i18n="extensionsLabel">
-            DOMAIN EXTENSIONS
-          </span>
+          <span>DOMAIN EXTENSIONS</span>
 
           <h2 data-i18n="extensionsTitle">
             اختر الامتداد المناسب لهويتك
@@ -1212,7 +1113,7 @@
 
           <p data-i18n="extensionsDescription">
             الأسعار والتوفر يتم عرضهما من المزود الحقيقي
-            بعد اكتمال الربط والتحقق.
+            عند التحقق المباشر.
           </p>
         </div>
 
@@ -1220,9 +1121,11 @@
 
           <article class="extension-card">
             <div class="extension-name">.com</div>
+
             <p data-i18n="comText">
               الخيار العالمي للأعمال والعلامات التجارية.
             </p>
+
             <div
               class="extension-price"
               data-i18n="verifiedPricing"
@@ -1233,9 +1136,11 @@
 
           <article class="extension-card">
             <div class="extension-name">.net</div>
+
             <p data-i18n="netText">
               مناسب للخدمات الرقمية والمشاريع التقنية.
             </p>
+
             <div
               class="extension-price"
               data-i18n="verifiedPricing"
@@ -1246,9 +1151,11 @@
 
           <article class="extension-card">
             <div class="extension-name">.org</div>
+
             <p data-i18n="orgText">
               خيار معروف للمنظمات والمبادرات والمجتمعات.
             </p>
+
             <div
               class="extension-price"
               data-i18n="verifiedPricing"
@@ -1259,9 +1166,11 @@
 
           <article class="extension-card">
             <div class="extension-name">.ai</div>
+
             <p data-i18n="aiText">
               امتداد حديث للمشاريع والمنتجات التقنية.
             </p>
+
             <div
               class="extension-price"
               data-i18n="verifiedPricing"
@@ -1274,24 +1183,18 @@
       </div>
     </section>
 
-    <!-- =====================================================
-         SERVICES
-         ===================================================== -->
-
     <section class="services" id="services">
       <div class="container">
 
         <div class="section-head">
-          <span data-i18n="servicesLabel">
-            MAJD DMAIL SERVICES
-          </span>
+          <span>MAJD DMAIL SERVICES</span>
 
           <h2 data-i18n="servicesTitle">
             كل ما يحتاجه نطاقك
           </h2>
 
           <p data-i18n="servicesDescription">
-            واجهة واحدة مصممة للربط مع خدمات
+            واجهة واحدة مرتبطة بخدمات
             MAJD-DMAIL الخلفية.
           </p>
         </div>
@@ -1304,14 +1207,10 @@
               البحث عن النطاقات
             </h3>
             <p data-i18n="serviceSearchText">
-              البحث عن توفر النطاق عبر موفر النطاقات
-              المرتبط بالنظام.
+              البحث الحقيقي عن توفر النطاق عبر المزود المرتبط بالنظام.
             </p>
-            <span
-              class="service-state"
-              data-i18n="backendControlled"
-            >
-              الحالة يحددها النظام الخلفي
+            <span class="service-state">
+              BACKEND
             </span>
           </article>
 
@@ -1321,14 +1220,10 @@
               تسجيل النطاق
             </h3>
             <p data-i18n="serviceRegisterText">
-              إنشاء طلب تسجيل بعد التحقق الحقيقي
-              من التوفر والسعر.
+              إنشاء طلب تسجيل بعد التحقق الحقيقي من التوفر والسعر.
             </p>
-            <span
-              class="service-state"
-              data-i18n="backendControlled"
-            >
-              الحالة يحددها النظام الخلفي
+            <span class="service-state">
+              BACKEND
             </span>
           </article>
 
@@ -1338,14 +1233,10 @@
               التجديد
             </h3>
             <p data-i18n="serviceRenewText">
-              إدارة تجديد النطاقات ومتابعة حالتها
-              من خلال النظام.
+              إدارة تجديد النطاقات ومتابعة حالتها.
             </p>
-            <span
-              class="service-state"
-              data-i18n="backendControlled"
-            >
-              الحالة يحددها النظام الخلفي
+            <span class="service-state">
+              BACKEND
             </span>
           </article>
 
@@ -1355,14 +1246,10 @@
               نقل النطاق
             </h3>
             <p data-i18n="serviceTransferText">
-              تدفق مخصص لطلبات نقل النطاق والتحقق
-              من متطلبات النقل.
+              إدارة طلبات نقل النطاق والتحقق من متطلبات النقل.
             </p>
-            <span
-              class="service-state"
-              data-i18n="backendControlled"
-            >
-              الحالة يحددها النظام الخلفي
+            <span class="service-state">
+              BACKEND
             </span>
           </article>
 
@@ -1372,41 +1259,27 @@
               إدارة DNS
             </h3>
             <p data-i18n="serviceDnsText">
-              إدارة سجلات DNS من خلال موفر فعلي
-              عند ربط الخدمة.
+              إدارة سجلات DNS من خلال المزود الفعلي.
             </p>
-            <span
-              class="service-state"
-              data-i18n="backendControlled"
-            >
-              الحالة يحددها النظام الخلفي
+            <span class="service-state">
+              BACKEND
             </span>
           </article>
 
           <article class="service-card">
             <div class="service-icon">♢</div>
-            <h3 data-i18n="serviceSslTitle">
-              SSL / TLS
-            </h3>
+            <h3>SSL / TLS</h3>
             <p data-i18n="serviceSslText">
-              إدارة حالة الشهادات والحماية المرتبطة
-              بالنطاقات.
+              إدارة الشهادات والحماية المرتبطة بالنطاقات.
             </p>
-            <span
-              class="service-state"
-              data-i18n="backendControlled"
-            >
-              الحالة يحددها النظام الخلفي
+            <span class="service-state">
+              BACKEND
             </span>
           </article>
 
         </div>
       </div>
     </section>
-
-    <!-- =====================================================
-         SECURITY / PLATFORM
-         ===================================================== -->
 
     <section class="why" id="security">
       <div class="container why-grid">
@@ -1422,25 +1295,28 @@
             <span data-i18n="whyTitle1">
               منصة واحدة.
             </span>
+
             <span data-i18n="whyTitle2">
               تحكم أوضح.
             </span>
           </h2>
 
           <p data-i18n="whyDescription">
-            صُممت الواجهة لتعمل فوق البنية الخلفية
+            صُممت الواجهة للعمل فوق البنية الخلفية
             لـ MAJD-DMAIL مع فصل واضح بين تجربة
-            العملاء وإدارة المالك.
+            الاستخدام وإدارة المالك.
           </p>
 
           <div class="feature-list">
 
             <div class="feature-item">
               <div class="check">✓</div>
+
               <div>
                 <strong data-i18n="feature1Title">
                   تحقق حقيقي من الخدمات
                 </strong>
+
                 <small data-i18n="feature1Text">
                   لا يتم اعتبار أي مزود خارجي متاحًا
                   قبل نجاح التحقق الفعلي.
@@ -1450,10 +1326,12 @@
 
             <div class="feature-item">
               <div class="check">✓</div>
+
               <div>
                 <strong data-i18n="feature2Title">
                   إدارة دورة حياة النطاق
                 </strong>
+
                 <small data-i18n="feature2Text">
                   من البحث والتسجيل إلى النقل
                   والتجديد والإدارة.
@@ -1463,26 +1341,28 @@
 
             <div class="feature-item">
               <div class="check">✓</div>
+
               <div>
                 <strong data-i18n="feature3Title">
                   تصميم عالمي
                 </strong>
+
                 <small data-i18n="feature3Text">
-                  تجربة عربية وإنجليزية دون ربط
-                  المنصة بدولة واحدة.
+                  تجربة عربية وإنجليزية.
                 </small>
               </div>
             </div>
 
             <div class="feature-item">
               <div class="check">✓</div>
+
               <div>
                 <strong data-i18n="feature4Title">
                   فصل إدارة المالك
                 </strong>
+
                 <small data-i18n="feature4Text">
-                  لا توجد لوحة المالك داخل واجهة
-                  الجمهور.
+                  لوحة المالك ليست مكشوفة في واجهة الجمهور.
                 </small>
               </div>
             </div>
@@ -1517,22 +1397,18 @@
       </div>
     </section>
 
-    <!-- =====================================================
-         CTA
-         ===================================================== -->
-
     <section class="cta">
       <div class="container">
 
         <div class="cta-card">
+
           <h2 data-i18n="ctaTitle">
             ابنِ هويتك الرقمية من اسمها
           </h2>
 
           <p data-i18n="ctaText">
-            ابحث عن نطاقك، وتحقق من توفره،
-            ثم أكمل العملية عبر خدمات MAJD-DMAIL
-            عند تفعيل الربط الفعلي.
+            ابحث عن نطاقك وتحقق من توفره
+            مباشرة من خدمات MAJD-DMAIL.
           </p>
 
           <button
@@ -1543,16 +1419,12 @@
           >
             ابحث عن نطاقك
           </button>
-        </div>
 
+        </div>
       </div>
     </section>
 
   </main>
-
-  <!-- =======================================================
-       FOOTER
-       ======================================================= -->
 
   <footer>
     <div class="container footer-row">
@@ -1576,9 +1448,11 @@
         <a href="#domains" data-i18n="navDomains">
           النطاقات
         </a>
+
         <a href="#services" data-i18n="navServices">
           الخدمات
         </a>
+
         <a href="#security" data-i18n="navSecurity">
           الحماية
         </a>
@@ -1586,10 +1460,6 @@
 
     </div>
   </footer>
-
-  <!-- =======================================================
-       PRIVATE MODE MODAL
-       ======================================================= -->
 
   <div
     class="modal-backdrop"
@@ -1599,6 +1469,7 @@
     <div class="modal">
 
       <div class="modal-top">
+
         <h3 data-i18n="privateTitle">
           التشغيل الخاص
         </h3>
@@ -1607,16 +1478,15 @@
           class="close-modal"
           type="button"
           onclick="closePrivateNotice()"
-          aria-label="Close"
         >
           ×
         </button>
+
       </div>
 
       <p data-i18n="privateText">
-        المنصة في وضع التشغيل الخاص حاليًا.
-        الوصول العام والحسابات العامة يتم تفعيلها
-        من النظام الخلفي عند الإطلاق الرسمي.
+        المنصة تعمل في الوضع الخاص حاليًا.
+        الوصول العام يتم تفعيله عند الإطلاق الرسمي.
       </p>
 
     </div>
@@ -1626,18 +1496,18 @@
     "use strict";
 
     /* =========================================================
-       MAJD DMAIL OFFICIAL UI CONFIGURATION
+       MAJD DMAIL OFFICIAL UI
+       PRIVATE MODE
+       REAL BACKEND ONLY
        ========================================================= */
 
     const MAJD_DMAIL_UI = Object.freeze({
       project: "MAJD-DMAIL",
       interface: "MAJD-DMAIL-OFFICIAL-UI",
-      version: "1.0.0",
+      version: "1.1.0",
 
       launchMode: "PRIVATE",
-
       publicLaunchEnabled: false,
-
       ownerDashboardExposed: false,
 
       api: {
@@ -1652,24 +1522,25 @@
       }
     });
 
-    /* =========================================================
-       TRANSLATIONS
-       ========================================================= */
-
     const translations = {
       ar: {
         privateMode:
           "تشغيل خاص — الوصول العام غير مفعّل حاليًا",
 
-        navHome: "الرئيسية",
-        navDomains: "النطاقات",
-        navServices: "الخدمات",
-        navSecurity: "الحماية",
+        navHome:
+          "الرئيسية",
 
-        login: "تسجيل الدخول",
+        navDomains:
+          "النطاقات",
 
-        eyebrow:
-          "MAJD SOVEREIGN DOMAIN PLATFORM",
+        navServices:
+          "الخدمات",
+
+        navSecurity:
+          "الحماية",
+
+        login:
+          "تسجيل الدخول",
 
         heroTitle1:
           "نطاقك هو بداية ",
@@ -1686,14 +1557,11 @@
         searchHint:
           "أدخل اسم النطاق الذي ترغب بالبحث عنه",
 
-        extensionsLabel:
-          "DOMAIN EXTENSIONS",
-
         extensionsTitle:
           "اختر الامتداد المناسب لهويتك",
 
         extensionsDescription:
-          "الأسعار والتوفر يتم عرضهما من المزود الحقيقي بعد اكتمال الربط والتحقق.",
+          "الأسعار والتوفر يتم عرضهما من المزود الحقيقي عند التحقق المباشر.",
 
         comText:
           "الخيار العالمي للأعمال والعلامات التجارية.",
@@ -1710,20 +1578,17 @@
         verifiedPricing:
           "السعر يظهر بعد التحقق المباشر",
 
-        servicesLabel:
-          "MAJD DMAIL SERVICES",
-
         servicesTitle:
           "كل ما يحتاجه نطاقك",
 
         servicesDescription:
-          "واجهة واحدة مصممة للربط مع خدمات MAJD-DMAIL الخلفية.",
+          "واجهة واحدة مرتبطة بخدمات MAJD-DMAIL الخلفية.",
 
         serviceSearchTitle:
           "البحث عن النطاقات",
 
         serviceSearchText:
-          "البحث عن توفر النطاق عبر موفر النطاقات المرتبط بالنظام.",
+          "البحث الحقيقي عن توفر النطاق عبر المزود المرتبط بالنظام.",
 
         serviceRegisterTitle:
           "تسجيل النطاق",
@@ -1735,28 +1600,22 @@
           "التجديد",
 
         serviceRenewText:
-          "إدارة تجديد النطاقات ومتابعة حالتها من خلال النظام.",
+          "إدارة تجديد النطاقات ومتابعة حالتها.",
 
         serviceTransferTitle:
           "نقل النطاق",
 
         serviceTransferText:
-          "تدفق مخصص لطلبات نقل النطاق والتحقق من متطلبات النقل.",
+          "إدارة طلبات نقل النطاق والتحقق من متطلبات النقل.",
 
         serviceDnsTitle:
           "إدارة DNS",
 
         serviceDnsText:
-          "إدارة سجلات DNS من خلال موفر فعلي عند ربط الخدمة.",
-
-        serviceSslTitle:
-          "SSL / TLS",
+          "إدارة سجلات DNS من خلال المزود الفعلي.",
 
         serviceSslText:
-          "إدارة حالة الشهادات والحماية المرتبطة بالنطاقات.",
-
-        backendControlled:
-          "الحالة يحددها النظام الخلفي",
+          "إدارة الشهادات والحماية المرتبطة بالنطاقات.",
 
         whyTitle1:
           "منصة واحدة. ",
@@ -1765,7 +1624,7 @@
           "تحكم أوضح.",
 
         whyDescription:
-          "صُممت الواجهة لتعمل فوق البنية الخلفية لـ MAJD-DMAIL مع فصل واضح بين تجربة العملاء وإدارة المالك.",
+          "صُممت الواجهة للعمل فوق البنية الخلفية لـ MAJD-DMAIL مع فصل واضح بين تجربة الاستخدام وإدارة المالك.",
 
         feature1Title:
           "تحقق حقيقي من الخدمات",
@@ -1783,19 +1642,19 @@
           "تصميم عالمي",
 
         feature3Text:
-          "تجربة عربية وإنجليزية دون ربط المنصة بدولة واحدة.",
+          "تجربة عربية وإنجليزية.",
 
         feature4Title:
           "فصل إدارة المالك",
 
         feature4Text:
-          "لا توجد لوحة المالك داخل واجهة الجمهور.",
+          "لوحة المالك ليست مكشوفة في واجهة الجمهور.",
 
         ctaTitle:
           "ابنِ هويتك الرقمية من اسمها",
 
         ctaText:
-          "ابحث عن نطاقك، وتحقق من توفره، ثم أكمل العملية عبر خدمات MAJD-DMAIL عند تفعيل الربط الفعلي.",
+          "ابحث عن نطاقك وتحقق من توفره مباشرة من خدمات MAJD-DMAIL.",
 
         ctaButton:
           "ابحث عن نطاقك",
@@ -1807,34 +1666,48 @@
           "التشغيل الخاص",
 
         privateText:
-          "المنصة في وضع التشغيل الخاص حاليًا. الوصول العام والحسابات العامة يتم تفعيلها من النظام الخلفي عند الإطلاق الرسمي.",
+          "المنصة تعمل في الوضع الخاص حاليًا. الوصول العام يتم تفعيله عند الإطلاق الرسمي.",
 
         invalidDomain:
           "اكتب اسم نطاق صحيح مثل example.com",
 
         searching:
-          "جاري إرسال طلب البحث إلى نظام MAJD-DMAIL...",
+          "جاري التحقق الحقيقي من النطاق...",
 
-        apiNotConnected:
-          "الواجهة جاهزة. خدمة البحث الخلفية لم يتم ربطها أو التحقق منها بعد.",
+        available:
+          "متاح حسب التحقق المباشر",
+
+        unavailable:
+          "غير متاح حسب التحقق المباشر",
+
+        unverified:
+          "وصل رد من النظام، لكن لم يتم تأكيد حالة النطاق من المزود.",
+
+        backendUnavailable:
+          "تعذر الوصول إلى خدمة البحث الخلفية.",
 
         searchFailed:
-          "تعذر إكمال البحث حاليًا. لن يتم عرض نتيجة غير موثقة."
+          "تعذر إكمال البحث الحقيقي عن النطاق."
       },
 
       en: {
         privateMode:
           "Private operation — public access is currently disabled",
 
-        navHome: "Home",
-        navDomains: "Domains",
-        navServices: "Services",
-        navSecurity: "Security",
+        navHome:
+          "Home",
 
-        login: "Sign in",
+        navDomains:
+          "Domains",
 
-        eyebrow:
-          "MAJD SOVEREIGN DOMAIN PLATFORM",
+        navServices:
+          "Services",
+
+        navSecurity:
+          "Security",
+
+        login:
+          "Sign in",
 
         heroTitle1:
           "Your domain begins ",
@@ -1851,14 +1724,11 @@
         searchHint:
           "Enter the domain name you want to search",
 
-        extensionsLabel:
-          "DOMAIN EXTENSIONS",
-
         extensionsTitle:
           "Choose the extension for your identity",
 
         extensionsDescription:
-          "Availability and pricing are shown only from a real verified provider connection.",
+          "Availability and pricing are shown from the real provider after live verification.",
 
         comText:
           "A global choice for businesses and brands.",
@@ -1875,20 +1745,17 @@
         verifiedPricing:
           "Price shown after live verification",
 
-        servicesLabel:
-          "MAJD DMAIL SERVICES",
-
         servicesTitle:
           "Everything your domain needs",
 
         servicesDescription:
-          "One interface designed to connect with the MAJD-DMAIL backend.",
+          "One interface connected to the MAJD-DMAIL backend.",
 
         serviceSearchTitle:
           "Domain Search",
 
         serviceSearchText:
-          "Check domain availability through the provider connected to the platform.",
+          "Real domain availability lookup through the connected provider.",
 
         serviceRegisterTitle:
           "Domain Registration",
@@ -1900,28 +1767,22 @@
           "Renewal",
 
         serviceRenewText:
-          "Manage domain renewals and their lifecycle through the platform.",
+          "Manage domain renewals and lifecycle.",
 
         serviceTransferTitle:
           "Domain Transfer",
 
         serviceTransferText:
-          "A dedicated flow for domain transfer requests and requirements.",
+          "Manage domain transfer requests and requirements.",
 
         serviceDnsTitle:
           "DNS Management",
 
         serviceDnsText:
-          "Manage DNS records through a real provider when connected.",
-
-        serviceSslTitle:
-          "SSL / TLS",
+          "Manage DNS records through the real provider.",
 
         serviceSslText:
-          "Manage certificate and protection status associated with domains.",
-
-        backendControlled:
-          "Status controlled by backend",
+          "Manage certificates and domain protection.",
 
         whyTitle1:
           "One platform. ",
@@ -1930,13 +1791,13 @@
           "Clearer control.",
 
         whyDescription:
-          "The interface is designed to operate on top of the MAJD-DMAIL backend with clear separation between customer experience and owner administration.",
+          "The interface operates above the MAJD-DMAIL backend with clear separation between user experience and owner administration.",
 
         feature1Title:
           "Real service verification",
 
         feature1Text:
-          "No external provider is considered operational before real health verification succeeds.",
+          "No external provider is considered operational before real verification succeeds.",
 
         feature2Title:
           "Domain lifecycle management",
@@ -1948,7 +1809,7 @@
           "Global design",
 
         feature3Text:
-          "Arabic and English experience without tying the platform to one country.",
+          "Arabic and English experience.",
 
         feature4Title:
           "Separated owner administration",
@@ -1960,7 +1821,7 @@
           "Build your digital identity from its name",
 
         ctaText:
-          "Search for your domain, verify availability, and continue through MAJD-DMAIL services when the real integration is activated.",
+          "Search your domain and verify its availability directly through MAJD-DMAIL.",
 
         ctaButton:
           "Search Your Domain",
@@ -1972,46 +1833,59 @@
           "Private Operation",
 
         privateText:
-          "The platform is currently operating privately. Public access and public accounts are activated by the backend at official launch.",
+          "The platform is currently operating privately. Public access is activated at official launch.",
 
         invalidDomain:
           "Enter a valid domain such as example.com",
 
         searching:
-          "Sending the search request to MAJD-DMAIL...",
+          "Checking the domain through the real backend...",
 
-        apiNotConnected:
-          "The interface is ready. The backend domain search service has not yet been connected or verified.",
+        available:
+          "is available according to live verification",
+
+        unavailable:
+          "is unavailable according to live verification",
+
+        unverified:
+          "The backend responded but the provider did not confirm the domain state.",
+
+        backendUnavailable:
+          "The backend domain search service could not be reached.",
 
         searchFailed:
-          "The search could not be completed. No unverified result will be displayed."
+          "The real domain search could not be completed."
       }
     };
 
     let currentLanguage = "ar";
 
-    /* =========================================================
-       LANGUAGE
-       ========================================================= */
-
     function applyLanguage(language) {
-      const dictionary = translations[language];
+      const dictionary =
+        translations[language];
 
       if (!dictionary) {
         return;
       }
 
-      currentLanguage = language;
+      currentLanguage =
+        language;
 
-      document.documentElement.lang = language;
+      document.documentElement.lang =
+        language;
+
       document.documentElement.dir =
-        language === "ar" ? "rtl" : "ltr";
+        language === "ar"
+          ? "rtl"
+          : "ltr";
 
       document
         .querySelectorAll("[data-i18n]")
         .forEach((element) => {
           const key =
-            element.getAttribute("data-i18n");
+            element.getAttribute(
+              "data-i18n"
+            );
 
           if (
             Object.prototype.hasOwnProperty.call(
@@ -2027,7 +1901,9 @@
       document.getElementById(
         "languageButton"
       ).textContent =
-        language === "ar" ? "EN" : "AR";
+        language === "ar"
+          ? "EN"
+          : "AR";
     }
 
     document
@@ -2043,17 +1919,14 @@
         }
       );
 
-    /* =========================================================
-       DOMAIN VALIDATION
-       ========================================================= */
-
     function normalizeDomain(value) {
-      return value
+      return String(value || "")
         .trim()
         .toLowerCase()
         .replace(/^https?:\/\//, "")
         .replace(/^www\./, "")
-        .split("/")[0];
+        .split("/")[0]
+        .replace(/\.$/, "");
     }
 
     function isValidDomain(domain) {
@@ -2065,24 +1938,21 @@
         return false;
       }
 
-      const labels = domain.split(".");
+      const labels =
+        domain.split(".");
 
       if (labels.length < 2) {
         return false;
       }
 
-      const labelPattern =
+      const pattern =
         /^(?!-)[a-z0-9-]{1,63}(?<!-)$/i;
 
       return labels.every(
         (label) =>
-          labelPattern.test(label)
+          pattern.test(label)
       );
     }
-
-    /* =========================================================
-       MESSAGE
-       ========================================================= */
 
     function showMessage(
       text,
@@ -2096,7 +1966,8 @@
       message.className =
         `message show ${type}`;
 
-      message.textContent = text;
+      message.textContent =
+        String(text || "");
     }
 
     function clearMessage() {
@@ -2105,13 +1976,12 @@
           "systemMessage"
         );
 
-      message.className = "message";
-      message.textContent = "";
-    }
+      message.className =
+        "message";
 
-    /* =========================================================
-       API HELPER
-       ========================================================= */
+      message.textContent =
+        "";
+    }
 
     async function requestJson(
       path,
@@ -2120,19 +1990,23 @@
       const url =
         `${MAJD_DMAIL_UI.api.baseUrl}${path}`;
 
-      const response = await fetch(
-        url,
-        {
-          ...options,
-          headers: {
-            "Accept":
-              "application/json",
-            "Content-Type":
-              "application/json",
-            ...(options.headers || {})
+      const response =
+        await fetch(
+          url,
+          {
+            ...options,
+
+            headers: {
+              "Accept":
+                "application/json",
+
+              "Content-Type":
+                "application/json",
+
+              ...(options.headers || {})
+            }
           }
-        }
-      );
+        );
 
       let payload = null;
 
@@ -2163,23 +2037,219 @@
       return payload;
     }
 
-    /* =========================================================
-       DOMAIN SEARCH
-       No fake fallback.
-       ========================================================= */
-
     async function searchDomain(domain) {
-      const endpoint =
-        MAJD_DMAIL_UI.api.domainSearch;
-
       return requestJson(
-        `${endpoint}?domain=${encodeURIComponent(
-          domain
-        )}`,
+        MAJD_DMAIL_UI.api.domainSearch,
         {
-          method: "GET"
+          method: "POST",
+
+          body: JSON.stringify({
+            domain: domain
+          })
         }
       );
+    }
+
+    function firstObject(...values) {
+      for (const value of values) {
+        if (
+          value &&
+          typeof value === "object" &&
+          !Array.isArray(value)
+        ) {
+          return value;
+        }
+      }
+
+      return {};
+    }
+
+    function readAvailabilityValue(value) {
+      if (typeof value === "boolean") {
+        return value;
+      }
+
+      if (
+        typeof value !== "string"
+      ) {
+        return null;
+      }
+
+      const normalized =
+        value
+          .trim()
+          .toLowerCase();
+
+      if (
+        [
+          "available",
+          "free",
+          "unregistered",
+          "yes",
+          "true"
+        ].includes(normalized)
+      ) {
+        return true;
+      }
+
+      if (
+        [
+          "unavailable",
+          "taken",
+          "registered",
+          "no",
+          "false"
+        ].includes(normalized)
+      ) {
+        return false;
+      }
+
+      return null;
+    }
+
+    function normalizeBackendResult(
+      payload,
+      requestedDomain
+    ) {
+      if (
+        !payload ||
+        typeof payload !== "object"
+      ) {
+        return {
+          domain: requestedDomain,
+          available: null,
+          verified: false,
+          price: null,
+          currency: null,
+          message: null
+        };
+      }
+
+      const authoritative =
+        firstObject(
+          payload.authoritative,
+          payload.authoritative_availability,
+          payload.provider_result,
+          payload.provider,
+          payload.result,
+          payload.data
+        );
+
+      const nested =
+        firstObject(
+          authoritative.result,
+          authoritative.data,
+          payload.result,
+          payload.data
+        );
+
+      const domain =
+        payload.domain ||
+        authoritative.domain ||
+        nested.domain ||
+        requestedDomain;
+
+      const candidates = [
+        payload.available,
+        payload.availability,
+
+        authoritative.available,
+        authoritative.availability,
+        authoritative.status,
+
+        nested.available,
+        nested.availability,
+        nested.status
+      ];
+
+      let available =
+        null;
+
+      for (const candidate of candidates) {
+        const interpreted =
+          readAvailabilityValue(
+            candidate
+          );
+
+        if (
+          interpreted !== null
+        ) {
+          available =
+            interpreted;
+
+          break;
+        }
+      }
+
+      const explicitVerified =
+        payload.verified === true ||
+        payload.authoritative === true ||
+        payload.provider_verified === true ||
+        authoritative.verified === true ||
+        authoritative.authoritative === true ||
+        authoritative.provider_verified === true ||
+        nested.verified === true;
+
+      /*
+       * A successful backend response may not use a field literally
+       * named "verified".
+       *
+       * We consider the result renderable only when:
+       * - availability is explicitly provided, AND
+       * - backend/provider response indicates success.
+       */
+
+      const backendSuccess =
+        payload.ok === true ||
+        authoritative.ok === true ||
+        nested.ok === true ||
+        String(
+          authoritative.status || ""
+        ).toUpperCase() === "SUCCESS" ||
+        String(
+          nested.status || ""
+        ).toUpperCase() === "SUCCESS";
+
+      const verified =
+        available !== null &&
+        (
+          explicitVerified ||
+          backendSuccess
+        );
+
+      const price =
+        payload.price ??
+        authoritative.price ??
+        nested.price ??
+        payload.registration_price ??
+        authoritative.registration_price ??
+        nested.registration_price ??
+        null;
+
+      const currency =
+        payload.currency ??
+        authoritative.currency ??
+        nested.currency ??
+        null;
+
+      const message =
+        payload.message ||
+        authoritative.message ||
+        nested.message ||
+        payload.error ||
+        authoritative.error ||
+        nested.error ||
+        null;
+
+      return {
+        domain,
+        available,
+        verified,
+        price,
+        currency,
+        message,
+        raw: payload
+      };
     }
 
     document
@@ -2198,14 +2268,22 @@
               "domainInput"
             );
 
+          const button =
+            document.getElementById(
+              "searchButton"
+            );
+
           const domain =
             normalizeDomain(
               input.value
             );
 
-          input.value = domain;
+          input.value =
+            domain;
 
-          if (!isValidDomain(domain)) {
+          if (
+            !isValidDomain(domain)
+          ) {
             showMessage(
               translations[
                 currentLanguage
@@ -2216,6 +2294,9 @@
             return;
           }
 
+          button.disabled =
+            true;
+
           showMessage(
             translations[
               currentLanguage
@@ -2224,102 +2305,148 @@
           );
 
           try {
-            const result =
-              await searchDomain(domain);
+            const payload =
+              await searchDomain(
+                domain
+              );
 
-            /*
-             * The backend owns truth.
-             * We only render a result if
-             * it explicitly returns a
-             * verified response.
-             */
+            console.log(
+              "MAJD-DMAIL domain response:",
+              payload
+            );
+
+            const result =
+              normalizeBackendResult(
+                payload,
+                domain
+              );
 
             if (
-              !result ||
-              result.verified !== true
+              result.available === null
             ) {
               showMessage(
+                result.message ||
                 translations[
                   currentLanguage
-                ].apiNotConnected,
+                ].unverified,
                 "warning"
               );
 
               return;
             }
 
-            const available =
-              result.available === true;
+            if (
+              result.verified !== true
+            ) {
+              showMessage(
+                result.message ||
+                translations[
+                  currentLanguage
+                ].unverified,
+                "warning"
+              );
 
-            const statusText =
-              available
-                ? (
-                    currentLanguage === "ar"
-                      ? `${domain} متاح حسب التحقق المباشر.`
-                      : `${domain} is available according to live verification.`
-                  )
-                : (
-                    currentLanguage === "ar"
-                      ? `${domain} غير متاح حسب التحقق المباشر.`
-                      : `${domain} is unavailable according to live verification.`
-                  );
+              return;
+            }
 
-            let priceText = "";
+            let text = "";
 
             if (
-              result.price &&
-              result.currency
+              currentLanguage === "ar"
             ) {
-              priceText =
+              text =
+                result.available
+                  ? `${result.domain} متاح حسب التحقق المباشر.`
+                  : `${result.domain} غير متاح حسب التحقق المباشر.`;
+            } else {
+              text =
+                result.available
+                  ? `${result.domain} is available according to live verification.`
+                  : `${result.domain} is unavailable according to live verification.`;
+            }
+
+            if (
+              result.price !== null &&
+              result.price !== undefined &&
+              result.price !== ""
+            ) {
+              text +=
                 currentLanguage === "ar"
-                  ? ` السعر: ${result.price} ${result.currency}.`
-                  : ` Price: ${result.price} ${result.currency}.`;
+                  ? ` السعر: ${result.price}${result.currency ? ` ${result.currency}` : ""}.`
+                  : ` Price: ${result.price}${result.currency ? ` ${result.currency}` : ""}.`;
             }
 
             showMessage(
-              statusText + priceText,
-              available
-                ? "info"
+              text,
+              result.available
+                ? "success"
                 : "warning"
             );
 
           } catch (error) {
-            /*
-             * During PRIVATE mode the
-             * backend route may not yet
-             * exist. Never invent a
-             * domain result.
-             */
+            console.error(
+              "MAJD-DMAIL SEARCH ERROR:",
+              error
+            );
 
             if (
-              error instanceof TypeError ||
-              error.status === 404 ||
-              error.status === 501 ||
+              error instanceof TypeError
+            ) {
+              showMessage(
+                translations[
+                  currentLanguage
+                ].backendUnavailable,
+                "error"
+              );
+
+              return;
+            }
+
+            if (
+              error.status === 404
+            ) {
+              showMessage(
+                currentLanguage === "ar"
+                  ? "مسار البحث غير مربوط بخدمة MAJD-DMAIL الخلفية."
+                  : "The domain search route is not connected to the MAJD-DMAIL backend.",
+                "error"
+              );
+
+              return;
+            }
+
+            if (
+              error.status === 502 ||
               error.status === 503
             ) {
               showMessage(
                 translations[
                   currentLanguage
-                ].apiNotConnected,
-                "warning"
+                ].backendUnavailable,
+                "error"
               );
 
               return;
             }
 
+            const backendMessage =
+              error.payload?.message ||
+              error.payload?.error;
+
             showMessage(
+              backendMessage ||
               translations[
                 currentLanguage
               ].searchFailed,
               "error"
             );
+
+          } finally {
+            button.disabled =
+              false;
           }
         }
       );
-
-    /* =========================================================
-       PRIVATE MODE
-       ========================================================= */
 
     function showPrivateNotice() {
       const modal =
@@ -2327,7 +2454,10 @@
           "privateModal"
         );
 
-      modal.classList.add("show");
+      modal.classList.add(
+        "show"
+      );
+
       modal.setAttribute(
         "aria-hidden",
         "false"
@@ -2340,7 +2470,10 @@
           "privateModal"
         );
 
-      modal.classList.remove("show");
+      modal.classList.remove(
+        "show"
+      );
+
       modal.setAttribute(
         "aria-hidden",
         "true"
@@ -2366,15 +2499,13 @@
     document.addEventListener(
       "keydown",
       (event) => {
-        if (event.key === "Escape") {
+        if (
+          event.key === "Escape"
+        ) {
           closePrivateNotice();
         }
       }
     );
-
-    /* =========================================================
-       UTILITIES
-       ========================================================= */
 
     function focusDomainSearch() {
       const input =
@@ -2393,28 +2524,12 @@
       );
     }
 
-    /* =========================================================
-       INITIALIZATION
-       ========================================================= */
-
     document.getElementById(
       "year"
     ).textContent =
       new Date().getFullYear();
 
     applyLanguage("ar");
-
-    /*
-     * Security rule:
-     * Owner administration is intentionally
-     * not exposed in this interface.
-     *
-     * Launch rule:
-     * PRIVATE is the current mode.
-     * Public launch must be controlled by
-     * the backend/deployment layer, not by
-     * pretending to secure it in frontend JS.
-     */
   </script>
 
 </body>
