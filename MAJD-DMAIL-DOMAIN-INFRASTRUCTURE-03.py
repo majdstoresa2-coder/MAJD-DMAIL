@@ -6,7 +6,7 @@ MAJD-DMAIL
 MAJD-DMAIL-DOMAIN-INFRASTRUCTURE-03.py
 
 FILE 03 — FINAL PRIMARY FILE
-Domains + provider contracts + security + API + runtime.
+Domains + Porkbun provider + security + API + runtime.
 
 SCOPE:
     DOMAINS ONLY
@@ -17,35 +17,15 @@ HIGHEST AUTHORITY:
 PRIMARY FILE:
     03 — FINAL PRIMARY FILE
 
-This file contains:
-- Strict FQDN normalization
-- Registrar / Reseller provider interface
-- RDAP primary discovery
-- WHOIS optional legacy status
-- Direct Registry/EPP optional status
-- Authoritative availability
-- Domain search/details
-- Registration
-- Renewal
-- Transfer
-- Idempotency
-- Lifecycle
-- DNS
-- Nameservers
-- DNSSEC
-- Domain TLS
-- Owner authority
-- Authorization
-- Security events
-- Audit
-- Monitoring
-- HTTP API
-- Runtime
-- Self-test
+PORKBUN:
+    API v3
+    https://api.porkbun.com/api/json/v3
 
-External mutations are never reported successful unless the
-configured registrar/reseller provider is verified and returns
-a successful result.
+SECURITY:
+    Secrets are environment-only.
+    No API secrets are hard-coded.
+    No fake success.
+    Paid/destructive operations require verified provider.
 """
 
 from __future__ import annotations
@@ -64,33 +44,21 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
+import uuid
 
-from http.server import (
-    BaseHTTPRequestHandler,
-    ThreadingHTTPServer,
-)
-
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-
-from typing import (
-    Any,
-    Dict,
-    List,
-    Optional,
-    Tuple,
-)
+from typing import Any, Dict, List, Optional, Tuple
 
 
 # ============================================================
-# IDENTITY / AUTHORITY
+# IDENTITY
 # ============================================================
 
 PROJECT_NAME = "MAJD-DMAIL"
 PROJECT_SCOPE = "DOMAINS_ONLY"
-VERSION = "3.0.0-FINAL"
-
+VERSION = "3.1.0-PORKBUN-FINAL"
 OWNER_AUTHORITY = "SUPREME_OWNER"
-
 FILE_NUMBER = "03"
 
 
@@ -99,32 +67,18 @@ FILE_NUMBER = "03"
 # ============================================================
 
 ROOT = Path(__file__).resolve().parent
-
 DATA_DIR = ROOT / "data"
 LOG_DIR = ROOT / "logs"
 
-for directory in (
-    DATA_DIR,
-    LOG_DIR,
-):
-    directory.mkdir(
-        parents=True,
-        exist_ok=True,
-    )
+DATA_DIR.mkdir(parents=True, exist_ok=True)
+LOG_DIR.mkdir(parents=True, exist_ok=True)
 
-DB_PATH = (
-    DATA_DIR
-    / "majd-dmail.sqlite3"
-)
-
-LOG_FILE = (
-    LOG_DIR
-    / "domain-03.log"
-)
+DB_PATH = DATA_DIR / "majd-dmail.sqlite3"
+LOG_FILE = LOG_DIR / "domain-03.log"
 
 
 # ============================================================
-# RUNTIME CONFIG
+# RUNTIME
 # ============================================================
 
 API_HOST = os.getenv(
@@ -154,7 +108,7 @@ HTTP_TIMEOUT = max(
 
 
 # ============================================================
-# PROVIDER CONTRACT
+# PROVIDER STATES
 # ============================================================
 
 PROVIDER_STATES: Tuple[str, ...] = (
@@ -164,13 +118,11 @@ PROVIDER_STATES: Tuple[str, ...] = (
     "unavailable",
 )
 
-VALID_PROVIDER_STATES = (
-    PROVIDER_STATES
-)
+VALID_PROVIDER_STATES = PROVIDER_STATES
 
 
 # ============================================================
-# DOMAIN LIFECYCLE CONTRACT
+# DOMAIN STATES
 # ============================================================
 
 DOMAIN_LIFECYCLE_STATES: Tuple[str, ...] = (
@@ -192,36 +144,21 @@ DOMAIN_LIFECYCLE_STATES: Tuple[str, ...] = (
 # LOGGING
 # ============================================================
 
-logger = logging.getLogger(
-    "MAJD_DMAIL_03"
-)
-
-logger.setLevel(
-    logging.INFO
-)
+logger = logging.getLogger("MAJD_DMAIL_03")
+logger.setLevel(logging.INFO)
 
 if not logger.handlers:
-
     formatter = logging.Formatter(
-        "%(asctime)s | "
-        "%(levelname)s | "
-        "%(message)s"
+        "%(asctime)s | %(levelname)s | %(message)s"
     )
 
-    file_handler = (
-        logging.FileHandler(
-            LOG_FILE,
-            encoding="utf-8",
-        )
+    file_handler = logging.FileHandler(
+        LOG_FILE,
+        encoding="utf-8",
     )
 
-    file_handler.setFormatter(
-        formatter
-    )
-
-    logger.addHandler(
-        file_handler
-    )
+    file_handler.setFormatter(formatter)
+    logger.addHandler(file_handler)
 
 
 # ============================================================
@@ -229,21 +166,14 @@ if not logger.handlers:
 # ============================================================
 
 def utc_now() -> str:
-    return (
-        dt.datetime.now(
-            dt.timezone.utc
-        ).isoformat()
-    )
+    return dt.datetime.now(
+        dt.timezone.utc
+    ).isoformat()
 
 
-def normalize_fqdn(
-    domain: str,
-) -> str:
+def normalize_fqdn(domain: str) -> str:
 
-    if not isinstance(
-        domain,
-        str,
-    ):
+    if not isinstance(domain, str):
         raise ValueError(
             "domain_must_be_string"
         )
@@ -305,7 +235,6 @@ def normalize_fqdn(
                 .encode("idna")
                 .decode("ascii")
             )
-
         except UnicodeError as exc:
             raise ValueError(
                 "idna_encoding_failed"
@@ -332,22 +261,9 @@ def normalize_fqdn(
                 "invalid_fqdn_characters"
             )
 
-        encoded_labels.append(
-            value
-        )
+        encoded_labels.append(value)
 
-    if (
-        len(encoded_labels) >= 3
-        and encoded_labels[-1]
-        == encoded_labels[-2]
-    ):
-        raise ValueError(
-            "duplicated_terminal_label"
-        )
-
-    fqdn = ".".join(
-        encoded_labels
-    )
+    fqdn = ".".join(encoded_labels)
 
     if len(
         fqdn.encode("ascii")
@@ -359,6 +275,65 @@ def normalize_fqdn(
     return fqdn
 
 
+def bool_from_value(
+    value: Any,
+) -> Optional[bool]:
+
+    if isinstance(value, bool):
+        return value
+
+    if isinstance(value, int):
+        return bool(value)
+
+    text = str(
+        value or ""
+    ).strip().lower()
+
+    if text in {
+        "yes",
+        "true",
+        "1",
+        "available",
+        "free",
+    }:
+        return True
+
+    if text in {
+        "no",
+        "false",
+        "0",
+        "unavailable",
+        "taken",
+        "registered",
+    }:
+        return False
+
+    return None
+
+
+def safe_json_load(
+    body: str,
+) -> Dict[str, Any]:
+
+    if not body:
+        return {}
+
+    try:
+        parsed = json.loads(body)
+
+        if isinstance(parsed, dict):
+            return parsed
+
+        return {
+            "result": parsed
+        }
+
+    except Exception:
+        return {
+            "raw": body[:2000]
+        }
+
+
 # ============================================================
 # DATABASE
 # ============================================================
@@ -366,27 +341,19 @@ def normalize_fqdn(
 class Store:
 
     def __init__(self) -> None:
-
-        self.lock = (
-            threading.RLock()
-        )
-
+        self.lock = threading.RLock()
         self.initialize()
 
     def connect(
         self,
     ) -> sqlite3.Connection:
 
-        connection = (
-            sqlite3.connect(
-                str(DB_PATH),
-                timeout=30,
-            )
+        connection = sqlite3.connect(
+            str(DB_PATH),
+            timeout=30,
         )
 
-        connection.row_factory = (
-            sqlite3.Row
-        )
+        connection.row_factory = sqlite3.Row
 
         return connection
 
@@ -454,9 +421,7 @@ class Store:
     def get_idempotency_record(
         self,
         key: str,
-    ) -> Optional[
-        Dict[str, Any]
-    ]:
+    ) -> Optional[Dict[str, Any]]:
 
         with self.connect() as connection:
 
@@ -469,11 +434,7 @@ class Store:
                 (key,),
             ).fetchone()
 
-        return (
-            dict(row)
-            if row
-            else None
-        )
+        return dict(row) if row else None
 
     def reserve_idempotency_key(
         self,
@@ -625,9 +586,7 @@ class Store:
     def get_domain_record(
         self,
         domain: str,
-    ) -> Optional[
-        Dict[str, Any]
-    ]:
+    ) -> Optional[Dict[str, Any]]:
 
         with self.connect() as connection:
 
@@ -640,11 +599,7 @@ class Store:
                 (domain,),
             ).fetchone()
 
-        return (
-            dict(row)
-            if row
-            else None
-        )
+        return dict(row) if row else None
 
     def audit(
         self,
@@ -767,19 +722,15 @@ STORE = Store()
 
 
 # ============================================================
-# IDEMPOTENCY PUBLIC INTERFACES
+# IDEMPOTENCY
 # ============================================================
 
 def get_idempotency_record(
     key: str,
-) -> Optional[
-    Dict[str, Any]
-]:
-    return (
-        STORE
-        .get_idempotency_record(
-            key
-        )
+) -> Optional[Dict[str, Any]]:
+
+    return STORE.get_idempotency_record(
+        key
     )
 
 
@@ -812,7 +763,7 @@ def store_idempotency_result(
 
 
 # ============================================================
-# OWNER / AUTHORIZATION / SECURITY
+# OWNER SECURITY
 # ============================================================
 
 def validate_owner_authority(
@@ -848,15 +799,15 @@ def authorize_domain_action(
         return {
             "ok": False,
             "authorized": False,
-            "reason": (
-                "owner_authority_required"
-            ),
+            "reason":
+                "owner_authority_required",
         }
 
     return {
         "ok": True,
         "authorized": True,
-        "authority": OWNER_AUTHORITY,
+        "authority":
+            OWNER_AUTHORITY,
         "action": action,
     }
 
@@ -881,7 +832,7 @@ def audit_domain_action(
     )
 
     return {
-        "ok": True,
+        "ok": True
     }
 
 
@@ -901,7 +852,7 @@ def record_security_event(
     )
 
     return {
-        "ok": True,
+        "ok": True
     }
 
 
@@ -936,90 +887,156 @@ def monitor_domain_operation(
 
     return {
         "ok": True,
-        "duration_ms": duration_ms,
+        "duration_ms":
+            duration_ms,
     }
 
 
 # ============================================================
-# REGISTRAR / RESELLER ADAPTER
+# REGISTRAR / PORKBUN ADAPTER
 # ============================================================
 
 class RegistrarResellerAdapter:
 
     def __init__(self) -> None:
 
-        self.name = os.getenv(
-            "MAJD_REGISTRAR_PROVIDER",
-            "",
-        ).strip()
+        provider = (
+            os.getenv(
+                "MAJD_REGISTRAR_PROVIDER",
+                os.getenv(
+                    "MAJD_REGISTRAR_NAME",
+                    "",
+                ),
+            )
+            .strip()
+            .lower()
+        )
 
-        self.base_url = os.getenv(
-            "MAJD_REGISTRAR_BASE_URL",
-            "",
-        ).strip().rstrip("/")
+        self.name = provider
 
-        self.token = os.getenv(
-            "MAJD_REGISTRAR_API_TOKEN",
-            "",
-        ).strip()
+        default_base = (
+            "https://api.porkbun.com/api/json/v3"
+            if provider == "porkbun"
+            else ""
+        )
 
-        self.paths = {
+        self.base_url = (
+            os.getenv(
+                "MAJD_REGISTRAR_BASE_URL",
+                default_base,
+            )
+            .strip()
+            .rstrip("/")
+        )
 
-            "health": os.getenv(
+        self.token = (
+            os.getenv(
+                "MAJD_REGISTRAR_API_TOKEN",
+                "",
+            )
+            .strip()
+        )
+
+        self.secret = (
+            os.getenv(
+                "MAJD_REGISTRAR_API_SECRET",
+                "",
+            )
+            .strip()
+        )
+
+        self.health_path = (
+            os.getenv(
                 "MAJD_REGISTRAR_HEALTH_PATH",
-                "/health",
-            ),
+                "/ping"
+                if provider == "porkbun"
+                else "/health",
+            )
+            .strip()
+        )
 
-            "availability": os.getenv(
-                "MAJD_REGISTRAR_AVAILABILITY_PATH",
-                "/domains/availability",
-            ),
+    def is_porkbun(
+        self,
+    ) -> bool:
 
-            "register": os.getenv(
-                "MAJD_REGISTRAR_REGISTER_PATH",
-                "/domains/register",
-            ),
-
-            "renew": os.getenv(
-                "MAJD_REGISTRAR_RENEW_PATH",
-                "/domains/renew",
-            ),
-
-            "transfer": os.getenv(
-                "MAJD_REGISTRAR_TRANSFER_PATH",
-                "/domains/transfer",
-            ),
-
-            "dns": os.getenv(
-                "MAJD_REGISTRAR_DNS_PATH",
-                "/domains/dns",
-            ),
-
-            "nameservers": os.getenv(
-                "MAJD_REGISTRAR_NAMESERVER_PATH",
-                "/domains/nameservers",
-            ),
-
-            "dnssec": os.getenv(
-                "MAJD_REGISTRAR_DNSSEC_PATH",
-                "/domains/dnssec",
-            ),
-
-            "tls": os.getenv(
-                "MAJD_REGISTRAR_TLS_PATH",
-                "/domains/tls",
-            ),
-        }
+        return (
+            self.name.lower()
+            == "porkbun"
+        )
 
     def configured(
         self,
     ) -> bool:
+
+        if self.is_porkbun():
+
+            return bool(
+                self.name
+                and self.base_url
+                and self.token
+                and self.secret
+            )
 
         return bool(
             self.name
             and self.base_url
             and self.token
         )
+
+    def _url(
+        self,
+        path: str,
+    ) -> str:
+
+        return (
+            self.base_url
+            + "/"
+            + path.lstrip("/")
+        )
+
+    def _headers(
+        self,
+        *,
+        idempotency_key:
+            Optional[str] = None,
+    ) -> Dict[str, str]:
+
+        headers = {
+            "Accept":
+                "application/json",
+
+            "Content-Type":
+                "application/json",
+
+            "User-Agent":
+                f"{PROJECT_NAME}/{VERSION}",
+        }
+
+        if self.is_porkbun():
+
+            headers[
+                "X-API-Key"
+            ] = self.token
+
+            headers[
+                "X-Secret-API-Key"
+            ] = self.secret
+
+        else:
+
+            headers[
+                "Authorization"
+            ] = (
+                f"Bearer {self.token}"
+            )
+
+        if idempotency_key:
+
+            headers[
+                "Idempotency-Key"
+            ] = idempotency_key
+
+        return headers
 
     def request(
         self,
@@ -1028,51 +1045,49 @@ class RegistrarResellerAdapter:
         payload: Optional[
             Dict[str, Any]
         ] = None,
+        *,
+        idempotency_key:
+            Optional[str] = None,
     ) -> Dict[str, Any]:
 
         if not self.configured():
 
             return {
                 "ok": False,
-                "state": "not_configured",
-                "reason": (
-                    "registrar_reseller_not_configured"
-                ),
+                "state":
+                    "not_configured",
+                "reason":
+                    "registrar_reseller_not_configured",
             }
+
+        body_payload = (
+            dict(payload)
+            if isinstance(
+                payload,
+                dict,
+            )
+            else None
+        )
 
         data = (
             None
-            if payload is None
+            if body_payload is None
             else json.dumps(
-                payload
+                body_payload,
+                ensure_ascii=False,
             ).encode(
                 "utf-8"
             )
         )
 
-        request = (
-            urllib.request.Request(
-                (
-                    self.base_url
-                    + "/"
-                    + path.lstrip("/")
-                ),
-                data=data,
-                method=method,
-                headers={
-                    "Accept":
-                        "application/json",
-
-                    "Content-Type":
-                        "application/json",
-
-                    "Authorization":
-                        f"Bearer {self.token}",
-
-                    "User-Agent":
-                        f"{PROJECT_NAME}/{VERSION}",
-                },
-            )
+        request = urllib.request.Request(
+            self._url(path),
+            data=data,
+            method=method.upper(),
+            headers=self._headers(
+                idempotency_key=
+                    idempotency_key
+            ),
         )
 
         try:
@@ -1099,60 +1114,117 @@ class RegistrarResellerAdapter:
                     )
                 )
 
-            try:
-                parsed = (
-                    json.loads(body)
-                    if body
-                    else {}
-                )
-
-            except Exception:
-                parsed = {
-                    "raw": body[:2000]
+                response_headers = {
+                    str(k):
+                        str(v)
+                    for k, v
+                    in response.headers.items()
                 }
 
-            return {
-                "ok": (
-                    200
-                    <= status
-                    < 300
-                ),
-                "state": (
-                    "verified"
-                    if (
-                        200
-                        <= status
-                        < 300
+            parsed = safe_json_load(
+                body
+            )
+
+            provider_success = (
+                200
+                <= status
+                < 300
+            )
+
+            if self.is_porkbun():
+
+                api_status = str(
+                    parsed.get(
+                        "status",
+                        "",
                     )
-                    else "unavailable"
-                ),
-                "status_code": status,
-                "provider": self.name,
-                "data": parsed,
+                ).strip().upper()
+
+                if api_status:
+                    provider_success = (
+                        provider_success
+                        and
+                        api_status
+                        == "SUCCESS"
+                    )
+
+            return {
+                "ok":
+                    provider_success,
+
+                "state":
+                    (
+                        "verified"
+                        if provider_success
+                        else "unavailable"
+                    ),
+
+                "status_code":
+                    status,
+
+                "provider":
+                    self.name,
+
+                "data":
+                    parsed,
+
+                "request_id":
+                    (
+                        response_headers.get(
+                            "X-Request-Id"
+                        )
+                        or parsed.get(
+                            "requestId"
+                        )
+                    ),
+
+                "api_version":
+                    response_headers.get(
+                        "X-API-Version"
+                    ),
             }
 
         except urllib.error.HTTPError as exc:
 
+            try:
+                error_body = (
+                    exc.read()
+                    .decode(
+                        "utf-8",
+                        errors="replace",
+                    )
+                )
+            except Exception:
+                error_body = ""
+
             return {
                 "ok": False,
-                "state": "unavailable",
-                "status_code": exc.code,
-                "provider": self.name,
-                "reason": (
-                    "provider_http_error"
-                ),
+                "state":
+                    "unavailable",
+                "status_code":
+                    int(exc.code),
+                "provider":
+                    self.name,
+                "reason":
+                    "provider_http_error",
+                "data":
+                    safe_json_load(
+                        error_body
+                    ),
             }
 
         except Exception as exc:
 
             return {
                 "ok": False,
-                "state": "unavailable",
-                "provider": self.name,
-                "reason": (
-                    "provider_request_failed"
-                ),
-                "error": repr(exc),
+                "state":
+                    "unavailable",
+                "provider":
+                    self.name,
+                "reason":
+                    "provider_request_failed",
+                "error":
+                    repr(exc),
             }
 
     def status(
@@ -1163,18 +1235,28 @@ class RegistrarResellerAdapter:
 
             return {
                 "ok": True,
-                "state": "not_configured",
-                "verified": False,
-                "provider": (
-                    self.name
-                    or None
-                ),
+                "state":
+                    "not_configured",
+                "verified":
+                    False,
+                "provider":
+                    self.name or None,
             }
 
-        result = self.request(
-            "GET",
-            self.paths["health"],
-        )
+        if self.is_porkbun():
+
+            result = self.request(
+                "POST",
+                self.health_path,
+                {},
+            )
+
+        else:
+
+            result = self.request(
+                "GET",
+                self.health_path,
+            )
 
         verified = bool(
             result.get("ok")
@@ -1182,14 +1264,18 @@ class RegistrarResellerAdapter:
 
         return {
             "ok": True,
-            "state": (
-                "verified"
-                if verified
-                else "unavailable"
-            ),
-            "verified": verified,
-            "provider": self.name,
-            "health": result,
+            "state":
+                (
+                    "verified"
+                    if verified
+                    else "unavailable"
+                ),
+            "verified":
+                verified,
+            "provider":
+                self.name,
+            "health":
+                result,
         }
 
     def availability(
@@ -1197,13 +1283,35 @@ class RegistrarResellerAdapter:
         domain: str,
     ) -> Dict[str, Any]:
 
+        fqdn = normalize_fqdn(
+            domain
+        )
+
+        if self.is_porkbun():
+
+            path = (
+                "/domain/checkDomain/"
+                + urllib.parse.quote(
+                    fqdn,
+                    safe="",
+                )
+            )
+
+            return self.request(
+                "GET",
+                path,
+            )
+
+        path = os.getenv(
+            "MAJD_REGISTRAR_AVAILABILITY_PATH",
+            "/domains/availability",
+        )
+
         return self.request(
             "POST",
-            self.paths[
-                "availability"
-            ],
+            path,
             {
-                "domain": domain,
+                "domain": fqdn
             },
         )
 
@@ -1211,48 +1319,263 @@ class RegistrarResellerAdapter:
         self,
         operation: str,
         payload: Dict[str, Any],
+        *,
+        idempotency_key:
+            Optional[str] = None,
     ) -> Dict[str, Any]:
 
-        if operation not in self.paths:
+        domain = normalize_fqdn(
+            str(
+                payload.get(
+                    "domain"
+                )
+                or ""
+            )
+        )
+
+        body = dict(payload)
+        body.pop(
+            "domain",
+            None,
+        )
+
+        if self.is_porkbun():
+
+            encoded_domain = (
+                urllib.parse.quote(
+                    domain,
+                    safe="",
+                )
+            )
+
+            paths = {
+                "register":
+                    f"/domain/create/{encoded_domain}",
+
+                "renew":
+                    f"/domain/renew/{encoded_domain}",
+
+                "transfer":
+                    f"/domain/transfer/{encoded_domain}",
+
+                "nameservers":
+                    f"/domain/updateNs/{encoded_domain}",
+
+                "tls":
+                    f"/ssl/retrieve/{encoded_domain}",
+            }
+
+            path = paths.get(
+                operation
+            )
+
+            if operation == "dns":
+
+                records = payload.get(
+                    "records"
+                )
+
+                if not isinstance(
+                    records,
+                    list,
+                ):
+                    return {
+                        "ok": False,
+                        "reason":
+                            "records_list_required",
+                    }
+
+                results: List[
+                    Dict[str, Any]
+                ] = []
+
+                for index, record in enumerate(
+                    records
+                ):
+
+                    if not isinstance(
+                        record,
+                        dict,
+                    ):
+                        return {
+                            "ok": False,
+                            "reason":
+                                "dns_record_object_required",
+                            "index":
+                                index,
+                        }
+
+                    record_payload = {
+                        key: value
+                        for key, value
+                        in record.items()
+                        if key
+                        in {
+                            "name",
+                            "type",
+                            "content",
+                            "ttl",
+                            "prio",
+                        }
+                    }
+
+                    item_result = (
+                        self.request(
+                            "POST",
+                            (
+                                "/dns/create/"
+                                + encoded_domain
+                            ),
+                            record_payload,
+                            idempotency_key=(
+                                (
+                                    f"{idempotency_key}-"
+                                    f"dns-{index}"
+                                )
+                                if idempotency_key
+                                else None
+                            ),
+                        )
+                    )
+
+                    results.append(
+                        item_result
+                    )
+
+                    if not item_result.get(
+                        "ok"
+                    ):
+                        return {
+                            "ok": False,
+                            "state":
+                                "unavailable",
+                            "provider":
+                                self.name,
+                            "reason":
+                                "dns_record_create_failed",
+                            "index":
+                                index,
+                            "results":
+                                results,
+                        }
+
+                return {
+                    "ok": True,
+                    "state":
+                        "verified",
+                    "provider":
+                        self.name,
+                    "results":
+                        results,
+                }
+
+            if operation == "dnssec":
+
+                custom_path = (
+                    os.getenv(
+                        "MAJD_REGISTRAR_DNSSEC_PATH",
+                        "",
+                    )
+                    .strip()
+                )
+
+                if not custom_path:
+
+                    return {
+                        "ok": False,
+                        "reason":
+                            "porkbun_dnssec_path_not_configured",
+                    }
+
+                path = custom_path.format(
+                    domain=encoded_domain
+                )
+
+            if not path:
+
+                return {
+                    "ok": False,
+                    "reason":
+                        "unsupported_provider_operation",
+                    "operation":
+                        operation,
+                }
+
+            if operation == "tls":
+
+                return self.request(
+                    "GET",
+                    path,
+                )
+
+            return self.request(
+                "POST",
+                path,
+                body,
+                idempotency_key=
+                    idempotency_key,
+            )
+
+        path_variable = (
+            "MAJD_REGISTRAR_"
+            + operation.upper()
+            + "_PATH"
+        )
+
+        path = os.getenv(
+            path_variable,
+            "",
+        ).strip()
+
+        if not path:
 
             return {
                 "ok": False,
-                "reason": (
-                    "unsupported_provider_operation"
-                ),
+                "reason":
+                    "provider_operation_path_not_configured",
+                "operation":
+                    operation,
             }
 
         return self.request(
             "POST",
-            self.paths[operation],
+            path,
             payload,
+            idempotency_key=
+                idempotency_key,
         )
 
 
-REGISTRAR = (
-    RegistrarResellerAdapter()
-)
+REGISTRAR = RegistrarResellerAdapter()
 
 
 # ============================================================
 # RDAP
 # ============================================================
 
-RDAP_BASE_URL = os.getenv(
-    "MAJD_RDAP_BASE_URL",
-    "https://rdap.org/domain",
-).strip().rstrip("/")
+RDAP_BASE_URL = (
+    os.getenv(
+        "MAJD_RDAP_BASE_URL",
+        "https://rdap.org/domain",
+    )
+    .strip()
+    .rstrip("/")
+)
 
 
-def rdap_status() -> Dict[str, Any]:
+def rdap_status(
+) -> Dict[str, Any]:
 
     if not RDAP_BASE_URL:
 
         return {
             "ok": True,
-            "state": "not_configured",
-            "verified": False,
-            "provider": "rdap",
+            "state":
+                "not_configured",
+            "verified":
+                False,
+            "provider":
+                "rdap",
         }
 
     try:
@@ -1289,24 +1612,32 @@ def rdap_status() -> Dict[str, Any]:
 
         return {
             "ok": True,
-            "state": (
-                "verified"
-                if verified
-                else "unavailable"
-            ),
-            "verified": verified,
-            "provider": "rdap",
-            "status_code": code,
+            "state":
+                (
+                    "verified"
+                    if verified
+                    else "unavailable"
+                ),
+            "verified":
+                verified,
+            "provider":
+                "rdap",
+            "status_code":
+                code,
         }
 
     except Exception as exc:
 
         return {
             "ok": True,
-            "state": "unavailable",
-            "verified": False,
-            "provider": "rdap",
-            "error": repr(exc),
+            "state":
+                "unavailable",
+            "verified":
+                False,
+            "provider":
+                "rdap",
+            "error":
+                repr(exc),
         }
 
 
@@ -1336,10 +1667,14 @@ def provider_status(
     }:
         return {
             "ok": True,
-            "state": "not_configured",
-            "verified": False,
-            "optional": True,
-            "provider": "whois_legacy",
+            "state":
+                "not_configured",
+            "verified":
+                False,
+            "optional":
+                True,
+            "provider":
+                "whois_legacy",
         }
 
     if name in {
@@ -1348,18 +1683,24 @@ def provider_status(
     }:
         return {
             "ok": True,
-            "state": "not_configured",
-            "verified": False,
-            "optional": True,
+            "state":
+                "not_configured",
+            "verified":
+                False,
+            "optional":
+                True,
             "provider":
                 "registry_epp_direct",
         }
 
     return {
         "ok": False,
-        "state": "not_configured",
-        "verified": False,
-        "reason": "unknown_provider",
+        "state":
+            "not_configured",
+        "verified":
+            False,
+        "reason":
+            "unknown_provider",
     }
 
 
@@ -1380,15 +1721,16 @@ def require_verified_provider(
 
         return {
             "ok": False,
-            "reason": (
-                "verified_registrar_reseller_required"
-            ),
-            "provider": status,
+            "reason":
+                "verified_registrar_reseller_required",
+            "provider":
+                status,
         }
 
     return {
         "ok": True,
-        "provider": status,
+        "provider":
+            status,
     }
 
 
@@ -1400,25 +1742,21 @@ def rdap_lookup(
         domain
     )
 
-    request = (
-        urllib.request.Request(
-            (
-                RDAP_BASE_URL
-                + "/"
-                + urllib.parse.quote(
-                    fqdn,
-                    safe="",
-                )
-            ),
-            headers={
-                "Accept":
-                    "application/rdap+json, "
-                    "application/json",
-
-                "User-Agent":
-                    f"{PROJECT_NAME}/{VERSION}",
-            },
-        )
+    request = urllib.request.Request(
+        (
+            RDAP_BASE_URL
+            + "/"
+            + urllib.parse.quote(
+                fqdn,
+                safe="",
+            )
+        ),
+        headers={
+            "Accept":
+                "application/rdap+json, application/json",
+            "User-Agent":
+                f"{PROJECT_NAME}/{VERSION}",
+        },
     )
 
     try:
@@ -1446,43 +1784,46 @@ def rdap_lookup(
             )
 
         return {
-            "ok": (
-                200
-                <= code
-                < 300
-            ),
-            "domain": fqdn,
-            "status_code": code,
-            "source": "rdap",
-            "data": (
-                json.loads(body)
-                if body
-                else {}
-            ),
+            "ok":
+                200 <= code < 300,
+            "domain":
+                fqdn,
+            "status_code":
+                code,
+            "source":
+                "rdap",
+            "data":
+                safe_json_load(
+                    body
+                ),
         }
 
     except urllib.error.HTTPError as exc:
 
         return {
             "ok": False,
-            "domain": fqdn,
-            "status_code": exc.code,
-            "source": "rdap",
-            "reason": (
-                "rdap_http_error"
-            ),
+            "domain":
+                fqdn,
+            "status_code":
+                int(exc.code),
+            "source":
+                "rdap",
+            "reason":
+                "rdap_http_error",
         }
 
     except Exception as exc:
 
         return {
             "ok": False,
-            "domain": fqdn,
-            "source": "rdap",
-            "reason": (
-                "rdap_request_failed"
-            ),
-            "error": repr(exc),
+            "domain":
+                fqdn,
+            "source":
+                "rdap",
+            "reason":
+                "rdap_request_failed",
+            "error":
+                repr(exc),
         }
 
 
@@ -1512,6 +1853,57 @@ def registry_epp_direct_status(
 # AUTHORITATIVE AVAILABILITY
 # ============================================================
 
+def _extract_porkbun_availability(
+    data: Dict[str, Any],
+) -> str:
+
+    response = (
+        data.get("response")
+        if isinstance(
+            data.get("response"),
+            dict,
+        )
+        else {}
+    )
+
+    candidates = [
+        response.get("avail"),
+        response.get("available"),
+        response.get("availability"),
+        data.get("avail"),
+        data.get("available"),
+        data.get("availability"),
+    ]
+
+    for candidate in candidates:
+
+        decision = bool_from_value(
+            candidate
+        )
+
+        if decision is True:
+            return "available"
+
+        if decision is False:
+            return "unavailable"
+
+    status_text = str(
+        response.get("status")
+        or data.get("status")
+        or ""
+    ).strip().lower()
+
+    if status_text in {
+        "available",
+        "premium",
+        "reserved",
+        "unavailable",
+    }:
+        return status_text
+
+    return "unknown"
+
+
 def authoritative_availability(
     domain: str,
 ) -> Dict[str, Any]:
@@ -1520,45 +1912,44 @@ def authoritative_availability(
         domain
     )
 
-    verified = (
-        require_verified_provider()
-    )
+    verified = require_verified_provider()
 
     if not verified.get("ok"):
 
         return {
             "ok": False,
-            "domain": fqdn,
-            "availability": "unknown",
-            "authoritative": False,
-            "reason": (
-                "verified_provider_required_for_authoritative_availability"
-            ),
-            "provider": (
+            "domain":
+                fqdn,
+            "availability":
+                "unknown",
+            "authoritative":
+                False,
+            "reason":
+                "verified_provider_required_for_authoritative_availability",
+            "provider":
                 verified.get(
                     "provider"
-                )
-            ),
+                ),
         }
 
-    result = (
-        REGISTRAR
-        .availability(
-            fqdn
-        )
+    result = REGISTRAR.availability(
+        fqdn
     )
 
     if not result.get("ok"):
 
         return {
             "ok": False,
-            "domain": fqdn,
-            "availability": "unknown",
-            "authoritative": False,
-            "reason": (
-                "authoritative_availability_request_failed"
-            ),
-            "provider_result": result,
+            "domain":
+                fqdn,
+            "availability":
+                "unknown",
+            "authoritative":
+                False,
+            "reason":
+                "authoritative_availability_request_failed",
+            "provider_result":
+                result,
         }
 
     data = (
@@ -1570,27 +1961,50 @@ def authoritative_availability(
         else {}
     )
 
-    raw = str(
-        data.get("availability")
-        or data.get("status")
-        or data.get("result")
-        or "unknown"
-    ).strip().lower()
+    if REGISTRAR.is_porkbun():
 
-    aliases = {
-        "free": "available",
-        "yes": "available",
-        "true": "available",
-        "taken": "unavailable",
-        "registered": "unavailable",
-        "no": "unavailable",
-        "false": "unavailable",
-    }
+        state = (
+            _extract_porkbun_availability(
+                data
+            )
+        )
 
-    state = aliases.get(
-        raw,
-        raw,
-    )
+    else:
+
+        raw = str(
+            data.get(
+                "availability"
+            )
+            or data.get(
+                "status"
+            )
+            or data.get(
+                "result"
+            )
+            or "unknown"
+        ).strip().lower()
+
+        aliases = {
+            "free":
+                "available",
+            "yes":
+                "available",
+            "true":
+                "available",
+            "taken":
+                "unavailable",
+            "registered":
+                "unavailable",
+            "no":
+                "unavailable",
+            "false":
+                "unavailable",
+        }
+
+        state = aliases.get(
+            raw,
+            raw,
+        )
 
     if state not in {
         "available",
@@ -1602,24 +2016,25 @@ def authoritative_availability(
         state = "unknown"
 
     return {
-        "ok": (
-            state
-            != "unknown"
-        ),
-        "domain": fqdn,
-        "availability": state,
-        "authoritative": True,
-        "provider": (
+        "ok":
+            state != "unknown",
+        "domain":
+            fqdn,
+        "availability":
+            state,
+        "authoritative":
+            state != "unknown",
+        "provider":
             result.get(
                 "provider"
-            )
-        ),
-        "provider_result": data,
+            ),
+        "provider_result":
+            data,
     }
 
 
 # ============================================================
-# SEARCH / DETAILS
+# SEARCH
 # ============================================================
 
 def search_domain(
@@ -1645,12 +2060,16 @@ def search_domain(
             availability.get("ok")
             or rdap.get("ok")
         ),
-        "domain": fqdn,
+        "domain":
+            fqdn,
         "authoritative_availability":
             availability,
-        "rdap": rdap,
-        "whois_required": False,
-        "direct_epp_required": False,
+        "rdap":
+            rdap,
+        "whois_required":
+            False,
+        "direct_epp_required":
+            False,
     }
 
 
@@ -1662,11 +2081,8 @@ def get_domain(
         domain
     )
 
-    local = (
-        STORE
-        .get_domain_record(
-            fqdn
-        )
+    local = STORE.get_domain_record(
+        fqdn
     )
 
     rdap = rdap_lookup(
@@ -1678,9 +2094,12 @@ def get_domain(
             local
             or rdap.get("ok")
         ),
-        "domain": fqdn,
-        "local": local,
-        "rdap": rdap,
+        "domain":
+            fqdn,
+        "local":
+            local,
+        "rdap":
+            rdap,
     }
 
 
@@ -1696,9 +2115,12 @@ def _hash_request(
 
     raw = json.dumps(
         {
-            "operation": operation,
-            "domain": domain,
-            "payload": payload,
+            "operation":
+                operation,
+            "domain":
+                domain,
+            "payload":
+                payload,
         },
         sort_keys=True,
         separators=(",", ":"),
@@ -1732,12 +2154,10 @@ def _begin_idempotent(
                 "idempotency_key_required",
         }
 
-    request_hash = (
-        _hash_request(
-            operation,
-            domain,
-            payload,
-        )
+    request_hash = _hash_request(
+        operation,
+        domain,
+        payload,
     )
 
     if existing:
@@ -1765,12 +2185,14 @@ def _begin_idempotent(
 
             return {
                 "ok": True,
-                "replayed": True,
-                "result": json.loads(
-                    existing[
-                        "result_json"
-                    ]
-                ),
+                "replayed":
+                    True,
+                "result":
+                    json.loads(
+                        existing[
+                            "result_json"
+                        ]
+                    ),
             }
 
         return {
@@ -1788,12 +2210,13 @@ def _begin_idempotent(
 
     return {
         "ok": True,
-        "replayed": False,
+        "replayed":
+            False,
     }
 
 
 # ============================================================
-# REGISTER DOMAIN
+# REGISTER
 # ============================================================
 
 def register_domain(
@@ -1805,19 +2228,15 @@ def register_domain(
         Dict[str, Any]
     ] = None,
     authority: str = OWNER_AUTHORITY,
+    dry_run: bool = False,
 ) -> Dict[str, Any]:
 
     started = time.time()
+    fqdn = normalize_fqdn(domain)
 
-    fqdn = normalize_fqdn(
-        domain
-    )
-
-    authorization = (
-        authorize_domain_action(
-            "register",
-            authority=authority,
-        )
+    authorization = authorize_domain_action(
+        "register",
+        authority=authority,
     )
 
     if not authorization.get("ok"):
@@ -1828,17 +2247,13 @@ def register_domain(
                 "owner_authority_required",
         }
 
-    verified = (
-        require_verified_provider()
-    )
+    verified = require_verified_provider()
 
     if not verified.get("ok"):
         return verified
 
-    availability = (
-        authoritative_availability(
-            fqdn
-        )
+    availability = authoritative_availability(
+        fqdn
     )
 
     if (
@@ -1850,7 +2265,8 @@ def register_domain(
 
         return {
             "ok": False,
-            "domain": fqdn,
+            "domain":
+                fqdn,
             "reason":
                 "authoritative_availability_required",
             "availability":
@@ -1869,37 +2285,41 @@ def register_domain(
 
         return {
             "ok": False,
-            "domain": fqdn,
+            "domain":
+                fqdn,
             "reason":
                 "domain_not_available_for_registration",
             "availability":
                 availability,
         }
 
-    payload = {
-        "domain": fqdn,
-        "years": max(
-            1,
-            int(years),
-        ),
+    payload: Dict[str, Any] = {
+        "domain":
+            fqdn,
+        "years":
+            max(
+                1,
+                int(years),
+            ),
         "registrant":
             registrant or {},
     }
 
-    existing = (
-        get_idempotency_record(
-            idempotency_key
-        )
+    if dry_run:
+        payload[
+            "dryRun"
+        ] = True
+
+    existing = get_idempotency_record(
+        idempotency_key
     )
 
-    idempotency = (
-        _begin_idempotent(
-            idempotency_key,
-            "register",
-            fqdn,
-            payload,
-            existing,
-        )
+    idempotency = _begin_idempotent(
+        idempotency_key,
+        "register",
+        fqdn,
+        payload,
+        existing,
     )
 
     if idempotency.get(
@@ -1912,11 +2332,11 @@ def register_domain(
     if not idempotency.get("ok"):
         return idempotency
 
-    provider_result = (
-        REGISTRAR.mutate(
-            "register",
-            payload,
-        )
+    provider_result = REGISTRAR.mutate(
+        "register",
+        payload,
+        idempotency_key=
+            idempotency_key,
     )
 
     ok = bool(
@@ -1924,10 +2344,16 @@ def register_domain(
     )
 
     result = {
-        "ok": ok,
-        "domain": fqdn,
-        "operation": "register",
-        "provider_verified": True,
+        "ok":
+            ok,
+        "domain":
+            fqdn,
+        "operation":
+            "register",
+        "dry_run":
+            bool(dry_run),
+        "provider_verified":
+            True,
         "provider_result":
             provider_result,
     }
@@ -1942,7 +2368,7 @@ def register_domain(
         result,
     )
 
-    if ok:
+    if ok and not dry_run:
 
         data = (
             provider_result.get("data")
@@ -1976,6 +2402,10 @@ def register_domain(
             if ok
             else "failed"
         ),
+        details={
+            "dry_run":
+                bool(dry_run)
+        },
     )
 
     monitor_domain_operation(
@@ -1989,7 +2419,7 @@ def register_domain(
 
 
 # ============================================================
-# RENEW DOMAIN
+# RENEW
 # ============================================================
 
 def renew_domain(
@@ -1998,22 +2428,16 @@ def renew_domain(
     *,
     years: int = 1,
     authority: str = OWNER_AUTHORITY,
+    dry_run: bool = False,
 ) -> Dict[str, Any]:
 
     started = time.time()
+    fqdn = normalize_fqdn(domain)
 
-    fqdn = normalize_fqdn(
-        domain
-    )
-
-    authorization = (
-        authorize_domain_action(
-            "renew",
-            authority=authority,
-        )
-    )
-
-    if not authorization.get("ok"):
+    if not authorize_domain_action(
+        "renew",
+        authority=authority,
+    ).get("ok"):
 
         return {
             "ok": False,
@@ -2021,35 +2445,36 @@ def renew_domain(
                 "owner_authority_required",
         }
 
-    verified = (
-        require_verified_provider()
-    )
+    verified = require_verified_provider()
 
     if not verified.get("ok"):
         return verified
 
-    payload = {
-        "domain": fqdn,
-        "years": max(
-            1,
-            int(years),
-        ),
+    payload: Dict[str, Any] = {
+        "domain":
+            fqdn,
+        "years":
+            max(
+                1,
+                int(years),
+            ),
     }
 
-    existing = (
-        get_idempotency_record(
-            idempotency_key
-        )
+    if dry_run:
+        payload[
+            "dryRun"
+        ] = True
+
+    existing = get_idempotency_record(
+        idempotency_key
     )
 
-    idempotency = (
-        _begin_idempotent(
-            idempotency_key,
-            "renew",
-            fqdn,
-            payload,
-            existing,
-        )
+    idempotency = _begin_idempotent(
+        idempotency_key,
+        "renew",
+        fqdn,
+        payload,
+        existing,
     )
 
     if idempotency.get(
@@ -2062,11 +2487,11 @@ def renew_domain(
     if not idempotency.get("ok"):
         return idempotency
 
-    provider_result = (
-        REGISTRAR.mutate(
-            "renew",
-            payload,
-        )
+    provider_result = REGISTRAR.mutate(
+        "renew",
+        payload,
+        idempotency_key=
+            idempotency_key,
     )
 
     ok = bool(
@@ -2074,10 +2499,16 @@ def renew_domain(
     )
 
     result = {
-        "ok": ok,
-        "domain": fqdn,
-        "operation": "renew",
-        "provider_verified": True,
+        "ok":
+            ok,
+        "domain":
+            fqdn,
+        "operation":
+            "renew",
+        "dry_run":
+            bool(dry_run),
+        "provider_verified":
+            True,
         "provider_result":
             provider_result,
     }
@@ -2092,31 +2523,6 @@ def renew_domain(
         result,
     )
 
-    if ok:
-
-        data = (
-            provider_result.get("data")
-            if isinstance(
-                provider_result.get(
-                    "data"
-                ),
-                dict,
-            )
-            else {}
-        )
-
-        STORE.upsert_domain(
-            fqdn,
-            "active",
-            REGISTRAR.name,
-            data.get(
-                "expires_at"
-            ),
-            {
-                "renewal": data
-            },
-        )
-
     audit_domain_action(
         "domain_renewal",
         domain=fqdn,
@@ -2125,6 +2531,10 @@ def renew_domain(
             if ok
             else "failed"
         ),
+        details={
+            "dry_run":
+                bool(dry_run)
+        },
     )
 
     monitor_domain_operation(
@@ -2138,7 +2548,7 @@ def renew_domain(
 
 
 # ============================================================
-# TRANSFER DOMAIN
+# TRANSFER
 # ============================================================
 
 def transfer_domain(
@@ -2147,22 +2557,16 @@ def transfer_domain(
     *,
     auth_code: str,
     authority: str = OWNER_AUTHORITY,
+    dry_run: bool = False,
 ) -> Dict[str, Any]:
 
     started = time.time()
+    fqdn = normalize_fqdn(domain)
 
-    fqdn = normalize_fqdn(
-        domain
-    )
-
-    authorization = (
-        authorize_domain_action(
-            "transfer",
-            authority=authority,
-        )
-    )
-
-    if not authorization.get("ok"):
+    if not authorize_domain_action(
+        "transfer",
+        authority=authority,
+    ).get("ok"):
 
         return {
             "ok": False,
@@ -2170,9 +2574,7 @@ def transfer_domain(
                 "owner_authority_required",
         }
 
-    verified = (
-        require_verified_provider()
-    )
+    verified = require_verified_provider()
 
     if not verified.get("ok"):
         return verified
@@ -2185,29 +2587,34 @@ def transfer_domain(
             "ok": False,
             "reason":
                 "transfer_auth_code_required",
-            "domain": fqdn,
+            "domain":
+                fqdn,
         }
 
-    payload = {
-        "domain": fqdn,
-        "auth_code":
-            str(auth_code).strip(),
+    payload: Dict[str, Any] = {
+        "domain":
+            fqdn,
+        "authCode":
+            str(
+                auth_code
+            ).strip(),
     }
 
-    existing = (
-        get_idempotency_record(
-            idempotency_key
-        )
+    if dry_run:
+        payload[
+            "dryRun"
+        ] = True
+
+    existing = get_idempotency_record(
+        idempotency_key
     )
 
-    idempotency = (
-        _begin_idempotent(
-            idempotency_key,
-            "transfer",
-            fqdn,
-            payload,
-            existing,
-        )
+    idempotency = _begin_idempotent(
+        idempotency_key,
+        "transfer",
+        fqdn,
+        payload,
+        existing,
     )
 
     if idempotency.get(
@@ -2220,11 +2627,11 @@ def transfer_domain(
     if not idempotency.get("ok"):
         return idempotency
 
-    provider_result = (
-        REGISTRAR.mutate(
-            "transfer",
-            payload,
-        )
+    provider_result = REGISTRAR.mutate(
+        "transfer",
+        payload,
+        idempotency_key=
+            idempotency_key,
     )
 
     ok = bool(
@@ -2232,10 +2639,16 @@ def transfer_domain(
     )
 
     result = {
-        "ok": ok,
-        "domain": fqdn,
-        "operation": "transfer",
-        "provider_verified": True,
+        "ok":
+            ok,
+        "domain":
+            fqdn,
+        "operation":
+            "transfer",
+        "dry_run":
+            bool(dry_run),
+        "provider_verified":
+            True,
         "provider_result":
             provider_result,
     }
@@ -2250,7 +2663,7 @@ def transfer_domain(
         result,
     )
 
-    if ok:
+    if ok and not dry_run:
 
         STORE.upsert_domain(
             fqdn,
@@ -2274,6 +2687,10 @@ def transfer_domain(
             if ok
             else "failed"
         ),
+        details={
+            "dry_run":
+                bool(dry_run)
+        },
     )
 
     monitor_domain_operation(
@@ -2297,11 +2714,11 @@ def configure_dns(
     ],
     *,
     authority: str = OWNER_AUTHORITY,
+    idempotency_key:
+        Optional[str] = None,
 ) -> Dict[str, Any]:
 
-    fqdn = normalize_fqdn(
-        domain
-    )
+    fqdn = normalize_fqdn(domain)
 
     if not authorize_domain_action(
         "dns",
@@ -2314,19 +2731,31 @@ def configure_dns(
                 "owner_authority_required",
         }
 
-    verified = (
-        require_verified_provider()
-    )
+    verified = require_verified_provider()
 
     if not verified.get("ok"):
         return verified
 
+    if not records:
+
+        return {
+            "ok": False,
+            "reason":
+                "dns_records_required",
+        }
+
     return REGISTRAR.mutate(
         "dns",
         {
-            "domain": fqdn,
-            "records": records,
+            "domain":
+                fqdn,
+            "records":
+                records,
         },
+        idempotency_key=(
+            idempotency_key
+            or str(uuid.uuid4())
+        ),
     )
 
 
@@ -2339,11 +2768,11 @@ def configure_nameservers(
     nameservers: List[str],
     *,
     authority: str = OWNER_AUTHORITY,
+    idempotency_key:
+        Optional[str] = None,
 ) -> Dict[str, Any]:
 
-    fqdn = normalize_fqdn(
-        domain
-    )
+    fqdn = normalize_fqdn(domain)
 
     if not authorize_domain_action(
         "nameservers",
@@ -2356,27 +2785,36 @@ def configure_nameservers(
                 "owner_authority_required",
         }
 
-    verified = (
-        require_verified_provider()
-    )
+    verified = require_verified_provider()
 
     if not verified.get("ok"):
         return verified
 
     normalized_nameservers = [
-        normalize_fqdn(
-            value
-        )
+        normalize_fqdn(value)
         for value in nameservers
     ]
+
+    if not normalized_nameservers:
+
+        return {
+            "ok": False,
+            "reason":
+                "nameservers_required",
+        }
 
     return REGISTRAR.mutate(
         "nameservers",
         {
-            "domain": fqdn,
-            "nameservers":
+            "domain":
+                fqdn,
+            "ns":
                 normalized_nameservers,
         },
+        idempotency_key=(
+            idempotency_key
+            or str(uuid.uuid4())
+        ),
     )
 
 
@@ -2391,11 +2829,11 @@ def configure_dnssec(
     ],
     *,
     authority: str = OWNER_AUTHORITY,
+    idempotency_key:
+        Optional[str] = None,
 ) -> Dict[str, Any]:
 
-    fqdn = normalize_fqdn(
-        domain
-    )
+    fqdn = normalize_fqdn(domain)
 
     if not authorize_domain_action(
         "dnssec",
@@ -2408,9 +2846,7 @@ def configure_dnssec(
                 "owner_authority_required",
         }
 
-    verified = (
-        require_verified_provider()
-    )
+    verified = require_verified_provider()
 
     if not verified.get("ok"):
         return verified
@@ -2418,15 +2854,20 @@ def configure_dnssec(
     return REGISTRAR.mutate(
         "dnssec",
         {
-            "domain": fqdn,
+            "domain":
+                fqdn,
             "ds_records":
                 ds_records,
         },
+        idempotency_key=(
+            idempotency_key
+            or str(uuid.uuid4())
+        ),
     )
 
 
 # ============================================================
-# DOMAIN TLS
+# TLS
 # ============================================================
 
 def provision_domain_tls(
@@ -2435,9 +2876,7 @@ def provision_domain_tls(
     authority: str = OWNER_AUTHORITY,
 ) -> Dict[str, Any]:
 
-    fqdn = normalize_fqdn(
-        domain
-    )
+    fqdn = normalize_fqdn(domain)
 
     if not authorize_domain_action(
         "tls",
@@ -2450,9 +2889,7 @@ def provision_domain_tls(
                 "owner_authority_required",
         }
 
-    verified = (
-        require_verified_provider()
-    )
+    verified = require_verified_provider()
 
     if not verified.get("ok"):
         return verified
@@ -2460,7 +2897,8 @@ def provision_domain_tls(
     return REGISTRAR.mutate(
         "tls",
         {
-            "domain": fqdn,
+            "domain":
+                fqdn,
         },
     )
 
@@ -2513,70 +2951,28 @@ class MajdDmailApplication:
         self,
     ) -> None:
 
+        route_paths = [
+            "/api/health",
+            "/api/domains/search",
+            "/api/domains/register",
+            "/api/domains/renew",
+            "/api/domains/transfer",
+            "/api/domains/dns",
+            "/api/domains/nameservers",
+            "/api/domains/dnssec",
+            "/api/domains/ssl",
+        ]
+
         self.routes = [
-
             type(
                 "Route",
                 (),
                 {
-                    "path":
-                        "/api/health"
+                    "path": path
                 },
-            )(),
-
-            type(
-                "Route",
-                (),
-                {
-                    "path":
-                        "/api/domains/search"
-                },
-            )(),
-
-            type(
-                "Route",
-                (),
-                {
-                    "path":
-                        "/api/domains/register"
-                },
-            )(),
-
-            type(
-                "Route",
-                (),
-                {
-                    "path":
-                        "/api/domains/renew"
-                },
-            )(),
-
-            type(
-                "Route",
-                (),
-                {
-                    "path":
-                        "/api/domains/transfer"
-                },
-            )(),
-
-            type(
-                "Route",
-                (),
-                {
-                    "path":
-                        "/api/domains/dns"
-                },
-            )(),
-
-            type(
-                "Route",
-                (),
-                {
-                    "path":
-                        "/api/domains/ssl"
-                },
-            )(),
+            )()
+            for path
+            in route_paths
         ]
 
 
@@ -2598,7 +2994,7 @@ class Handler(
 ):
 
     server_version = (
-        "MAJD-DMAIL/3"
+        "MAJD-DMAIL/3.1"
     )
 
     def log_message(
@@ -2638,9 +3034,7 @@ class Handler(
             .decode("utf-8")
         )
 
-        value = json.loads(
-            raw
-        )
+        value = json.loads(raw)
 
         if not isinstance(
             value,
@@ -2663,18 +3057,13 @@ class Handler(
             ensure_ascii=False,
             indent=2,
             default=str,
-        ).encode(
-            "utf-8"
-        )
+        ).encode("utf-8")
 
-        self.send_response(
-            status
-        )
+        self.send_response(status)
 
         self.send_header(
             "Content-Type",
-            "application/json; "
-            "charset=utf-8",
+            "application/json; charset=utf-8",
         )
 
         self.send_header(
@@ -2689,19 +3078,14 @@ class Handler(
 
         self.end_headers()
 
-        self.wfile.write(
-            raw
-        )
+        self.wfile.write(raw)
 
     def do_GET(
         self,
     ) -> None:
 
-        parsed = (
-            urllib.parse
-            .urlparse(
-                self.path
-            )
+        parsed = urllib.parse.urlparse(
+            self.path
         )
 
         try:
@@ -2737,10 +3121,8 @@ class Handler(
                     or [""]
                 )[0]
 
-                result = (
-                    search_domain(
-                        domain
-                    )
+                result = search_domain(
+                    domain
                 )
 
                 self.send_json(
@@ -2769,7 +3151,8 @@ class Handler(
                 400,
                 {
                     "ok": False,
-                    "reason": str(exc),
+                    "reason":
+                        str(exc),
                 },
             )
 
@@ -2825,10 +3208,8 @@ class Handler(
                 == "/api/domains/search"
             ):
 
-                result = (
-                    search_domain(
-                        domain
-                    )
+                result = search_domain(
+                    domain
                 )
 
             elif (
@@ -2836,36 +3217,40 @@ class Handler(
                 == "/api/domains/register"
             ):
 
-                result = (
-                    register_domain(
-                        domain,
-                        str(
-                            payload.get(
-                                "idempotency_key"
-                            )
-                            or ""
-                        ),
-                        years=int(
-                            payload.get(
-                                "years"
-                            )
-                            or 1
-                        ),
-                        registrant=(
+                result = register_domain(
+                    domain,
+                    str(
+                        payload.get(
+                            "idempotency_key"
+                        )
+                        or ""
+                    ),
+                    years=int(
+                        payload.get(
+                            "years"
+                        )
+                        or 1
+                    ),
+                    registrant=(
+                        payload.get(
+                            "registrant"
+                        )
+                        if isinstance(
                             payload.get(
                                 "registrant"
-                            )
-                            if isinstance(
-                                payload.get(
-                                    "registrant"
-                                ),
-                                dict,
-                            )
-                            else {}
-                        ),
-                        authority=
-                            authority,
-                    )
+                            ),
+                            dict,
+                        )
+                        else {}
+                    ),
+                    authority=
+                        authority,
+                    dry_run=bool(
+                        payload.get(
+                            "dry_run",
+                            False,
+                        )
+                    ),
                 )
 
             elif (
@@ -2873,24 +3258,28 @@ class Handler(
                 == "/api/domains/renew"
             ):
 
-                result = (
-                    renew_domain(
-                        domain,
-                        str(
-                            payload.get(
-                                "idempotency_key"
-                            )
-                            or ""
-                        ),
-                        years=int(
-                            payload.get(
-                                "years"
-                            )
-                            or 1
-                        ),
-                        authority=
-                            authority,
-                    )
+                result = renew_domain(
+                    domain,
+                    str(
+                        payload.get(
+                            "idempotency_key"
+                        )
+                        or ""
+                    ),
+                    years=int(
+                        payload.get(
+                            "years"
+                        )
+                        or 1
+                    ),
+                    authority=
+                        authority,
+                    dry_run=bool(
+                        payload.get(
+                            "dry_run",
+                            False,
+                        )
+                    ),
                 )
 
             elif (
@@ -2898,24 +3287,28 @@ class Handler(
                 == "/api/domains/transfer"
             ):
 
-                result = (
-                    transfer_domain(
-                        domain,
-                        str(
-                            payload.get(
-                                "idempotency_key"
-                            )
-                            or ""
-                        ),
-                        auth_code=str(
-                            payload.get(
-                                "auth_code"
-                            )
-                            or ""
-                        ),
-                        authority=
-                            authority,
-                    )
+                result = transfer_domain(
+                    domain,
+                    str(
+                        payload.get(
+                            "idempotency_key"
+                        )
+                        or ""
+                    ),
+                    auth_code=str(
+                        payload.get(
+                            "auth_code"
+                        )
+                        or ""
+                    ),
+                    authority=
+                        authority,
+                    dry_run=bool(
+                        payload.get(
+                            "dry_run",
+                            False,
+                        )
+                    ),
                 )
 
             elif (
@@ -2923,10 +3316,8 @@ class Handler(
                 == "/api/domains/dns"
             ):
 
-                records = (
-                    payload.get(
-                        "records"
-                    )
+                records = payload.get(
+                    "records"
                 )
 
                 if not isinstance(
@@ -2937,13 +3328,90 @@ class Handler(
                         "records_list_required"
                     )
 
-                result = (
-                    configure_dns(
-                        domain,
-                        records,
-                        authority=
-                            authority,
+                result = configure_dns(
+                    domain,
+                    records,
+                    authority=
+                        authority,
+                    idempotency_key=(
+                        str(
+                            payload.get(
+                                "idempotency_key"
+                            )
+                            or ""
+                        )
+                        or None
+                    ),
+                )
+
+            elif (
+                path
+                == "/api/domains/nameservers"
+            ):
+
+                nameservers = payload.get(
+                    "nameservers"
+                )
+
+                if not isinstance(
+                    nameservers,
+                    list,
+                ):
+                    raise ValueError(
+                        "nameservers_list_required"
                     )
+
+                result = configure_nameservers(
+                    domain,
+                    [
+                        str(value)
+                        for value
+                        in nameservers
+                    ],
+                    authority=
+                        authority,
+                    idempotency_key=(
+                        str(
+                            payload.get(
+                                "idempotency_key"
+                            )
+                            or ""
+                        )
+                        or None
+                    ),
+                )
+
+            elif (
+                path
+                == "/api/domains/dnssec"
+            ):
+
+                ds_records = payload.get(
+                    "ds_records"
+                )
+
+                if not isinstance(
+                    ds_records,
+                    list,
+                ):
+                    raise ValueError(
+                        "ds_records_list_required"
+                    )
+
+                result = configure_dnssec(
+                    domain,
+                    ds_records,
+                    authority=
+                        authority,
+                    idempotency_key=(
+                        str(
+                            payload.get(
+                                "idempotency_key"
+                            )
+                            or ""
+                        )
+                        or None
+                    ),
                 )
 
             elif (
@@ -2951,12 +3419,10 @@ class Handler(
                 == "/api/domains/ssl"
             ):
 
-                result = (
-                    provision_domain_tls(
-                        domain,
-                        authority=
-                            authority,
-                    )
+                result = provision_domain_tls(
+                    domain,
+                    authority=
+                        authority,
                 )
 
             else:
@@ -2987,7 +3453,8 @@ class Handler(
                 400,
                 {
                     "ok": False,
-                    "reason": str(exc),
+                    "reason":
+                        str(exc),
                 },
             )
 
@@ -3021,7 +3488,9 @@ def run_self_test(
         bool,
     ] = {}
 
-    checks["normalize"] = (
+    checks[
+        "normalize"
+    ] = (
         normalize_fqdn(
             "Example.COM"
         )
@@ -3032,20 +3501,6 @@ def run_self_test(
         )
         == "example.com"
     )
-
-    duplicate_rejected = False
-
-    try:
-        normalize_fqdn(
-            "example.com.com"
-        )
-
-    except ValueError:
-        duplicate_rejected = True
-
-    checks[
-        "duplicate_rejected"
-    ] = duplicate_rejected
 
     checks[
         "provider_states"
@@ -3063,10 +3518,8 @@ def run_self_test(
 
     checks[
         "owner"
-    ] = (
-        validate_owner_authority(
-            OWNER_AUTHORITY
-        )
+    ] = validate_owner_authority(
+        OWNER_AUTHORITY
     )
 
     checks[
@@ -3075,19 +3528,32 @@ def run_self_test(
         len(
             app.routes
         )
-        == 7
+        == 9
+    )
+
+    checks[
+        "porkbun_secret_required"
+    ] = (
+        True
+        if not REGISTRAR.is_porkbun()
+        else bool(
+            REGISTRAR.secret
+        )
     )
 
     return {
-        "ok": all(
-            checks.values()
-        ),
+        "ok":
+            all(
+                checks.values()
+            ),
         "project":
             PROJECT_NAME,
         "scope":
             PROJECT_SCOPE,
         "owner_authority":
             OWNER_AUTHORITY,
+        "version":
+            VERSION,
         "checks":
             checks,
     }
@@ -3102,19 +3568,16 @@ def serve(
     port: int = API_PORT,
 ) -> int:
 
-    server = (
-        ThreadingHTTPServer(
-            (
-                host,
-                int(port),
-            ),
-            Handler,
-        )
+    server = ThreadingHTTPServer(
+        (
+            host,
+            int(port),
+        ),
+        Handler,
     )
 
     logger.info(
-        "MAJD-DMAIL 03 "
-        "listening on %s:%s",
+        "MAJD-DMAIL 03 listening on %s:%s",
         host,
         port,
     )
@@ -3141,19 +3604,14 @@ def serve(
 def build_parser(
 ) -> argparse.ArgumentParser:
 
-    parser = (
-        argparse.ArgumentParser(
-            prog=(
-                Path(__file__).name
-            )
-        )
+    parser = argparse.ArgumentParser(
+        prog=Path(
+            __file__
+        ).name
     )
 
-    sub = (
-        parser
-        .add_subparsers(
-            dest="command"
-        )
+    sub = parser.add_subparsers(
+        dest="command"
     )
 
     sub.add_parser(
@@ -3164,41 +3622,37 @@ def build_parser(
         "self-test"
     )
 
-    normalize_command = (
-        sub.add_parser(
-            "normalize"
-        )
+    normalize_command = sub.add_parser(
+        "normalize"
     )
 
     normalize_command.add_argument(
         "domain"
     )
 
-    search_command = (
-        sub.add_parser(
-            "search"
-        )
+    search_command = sub.add_parser(
+        "search"
     )
 
     search_command.add_argument(
         "domain"
     )
 
-    runtime_command = (
-        sub.add_parser(
-            "serve"
-        )
+    runtime_command = sub.add_parser(
+        "serve"
     )
 
     runtime_command.add_argument(
         "--host",
-        default=API_HOST,
+        default=
+            API_HOST,
     )
 
     runtime_command.add_argument(
         "--port",
         type=int,
-        default=API_PORT,
+        default=
+            API_PORT,
     )
 
     return parser
@@ -3208,7 +3662,8 @@ def build_parser(
 # MAIN
 # ============================================================
 
-def main() -> int:
+def main(
+) -> int:
 
     args = (
         build_parser()
@@ -3222,15 +3677,11 @@ def main() -> int:
 
     if command == "health":
 
-        result = (
-            health_report()
-        )
+        result = health_report()
 
     elif command == "self-test":
 
-        result = (
-            run_self_test()
-        )
+        result = run_self_test()
 
     elif command == "normalize":
 
@@ -3256,10 +3707,8 @@ def main() -> int:
 
         try:
 
-            result = (
-                search_domain(
-                    args.domain
-                )
+            result = search_domain(
+                args.domain
             )
 
         except ValueError as exc:
