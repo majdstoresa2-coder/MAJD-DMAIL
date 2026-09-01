@@ -8,9 +8,9 @@ MAJD-DMAIL-CORE-PLATFORM-02.py
 ===============================================================================
 
 FILE 02
-MAJD-DMAIL CORE PLATFORM
+PERMANENT MAJD-DMAIL CORE PLATFORM
 
-Permanent manually maintained core for MAJD-DMAIL.
+VERSION 2.0.0
 
 ARCHITECTURE
 ============
@@ -19,57 +19,71 @@ ARCHITECTURE
      AI / automation / planning / verification / repair / orchestration.
 
 02 - MAJD-DMAIL-CORE-PLATFORM-02.py
-     Permanent platform core.
-     This file.
+     Permanent trusted platform core.
+     THIS FILE.
 
-03 - AI generated.
-04 - AI generated.
-05 - AI generated.
+03 - Domain infrastructure.
+04 - AI generated application/API layer.
+05 - AI generated runtime/integration layer.
 
-There MUST NOT be a primary MAJD-DMAIL file 06 or higher.
+NO PRIMARY FILE 06 OR HIGHER.
+
+IMPORTANT DATABASE RULE
+=======================
+
+File 03 already owns its domain-infrastructure runtime database.
+
+File 02 MUST NOT reuse File 03's incompatible SQLite schema.
+
+Therefore this permanent core uses:
+
+    data/majd-dmail-core.sqlite3
+
+This prevents destructive schema collisions with File 03 while allowing
+File 04/05 to bridge both systems safely.
 
 MISSION
 =======
 
-Provide the trusted core contracts and persistent runtime foundation for:
+Trusted persistent foundation for:
 
-- Domain search
-- Domain registration
-- Domain renewal
-- Domain transfer
-- Domain lifecycle
-- DNS
-- SSL/TLS
-- Professional paid email
 - Customer accounts
-- Owner authority
-- Pricing
+- SUPREME_OWNER authority
+- Email ownership verification
+- Password reset
+- Secure sessions
+- Logout / session revocation
+- User settings
+- Domain ownership references
+- DNS metadata
+- SSL metadata
+- Professional paid email services
+- Mailboxes
+- Products / pricing
 - Subscriptions
-- Payments
 - Invoices
-- Wallet/accounting records
-- Security
-- Audit
-- Provider adapters
+- Payments
+- Provider verification
 - Notifications
-- AI integration contracts
+- Audit
 - Runtime health
-- Service verification
+- AI / automation contracts
 
-SECURITY PRINCIPLES
-===================
+SECURITY RULES
+==============
 
-- SUPREME_OWNER is the highest authority.
+- SUPREME_OWNER is highest authority.
+- Customer accounts begin PENDING.
+- Customer account becomes ACTIVE only after email verification.
+- Owner seed account may be created ACTIVE.
 - Passwords are never stored as plaintext.
-- API keys and secrets are never hard-coded.
-- External services are NEVER marked LIVE without real verification.
-- Financial operations are idempotent.
-- Important operations are auditable.
-- Ownership-sensitive domain operations require authorization.
-- Provider implementations are replaceable adapters.
-- File 02 does not automatically modify file 01.
-- File 02 does not create primary source files.
-- Routine operations are designed for automation.
+- Verification/reset codes are never stored as plaintext.
+- Session tokens are never stored as plaintext.
+- External providers are NEVER treated as LIVE without real verification.
+- Payment operations are idempotent.
+- Sensitive operations are auditable.
+- No external success is fabricated.
+- No secrets are hard-coded.
 """
 
 from __future__ import annotations
@@ -83,12 +97,13 @@ import hmac
 import json
 import logging
 import os
+import re
 import secrets
 import sqlite3
 import tempfile
 import threading
-import time
 import uuid
+
 from contextlib import contextmanager
 from pathlib import Path
 from typing import (
@@ -101,7 +116,6 @@ from typing import (
     Optional,
     Protocol,
     Sequence,
-    Tuple,
 )
 
 
@@ -111,7 +125,7 @@ from typing import (
 
 PROJECT_NAME = "MAJD-DMAIL"
 FILE_ID = "02"
-VERSION = "1.0.0"
+VERSION = "2.0.0"
 
 OWNER_AUTHORITY = "SUPREME_OWNER"
 
@@ -133,7 +147,10 @@ STATE_DIR = ROOT / "state"
 RUNTIME_DIR = ROOT / "runtime"
 BACKUP_DIR = ROOT / "backups"
 
-DATABASE_FILE = DATA_DIR / "majd-dmail.sqlite3"
+# IMPORTANT:
+# Separate from File 03 database to avoid incompatible schema collisions.
+DATABASE_FILE = DATA_DIR / "majd-dmail-core.sqlite3"
+
 LOG_FILE = LOG_DIR / "core-platform.log"
 EVENTS_FILE = LOG_DIR / "core-events.jsonl"
 CORE_STATE_FILE = STATE_DIR / "core-platform-state.json"
@@ -194,13 +211,17 @@ if not logger.handlers:
 
 
 # =============================================================================
-# GENERAL HELPERS
+# HELPERS
 # =============================================================================
 
-def utc_now() -> str:
+def utc_dt() -> dt.datetime:
     return dt.datetime.now(
         dt.timezone.utc
-    ).isoformat()
+    )
+
+
+def utc_now() -> str:
+    return utc_dt().isoformat()
 
 
 def new_id(
@@ -217,19 +238,79 @@ def normalize_email(
     value: str,
 ) -> str:
 
-    return value.strip().lower()
+    return str(
+        value or ""
+    ).strip().lower()
 
 
 def normalize_domain(
     value: str,
 ) -> str:
 
-    value = value.strip().lower()
+    value = str(
+        value or ""
+    ).strip().lower()
 
-    if value.endswith("."):
-        value = value[:-1]
+    value = re.sub(
+        r"^https?://",
+        "",
+        value,
+    )
 
-    return value
+    value = re.sub(
+        r"^www\.",
+        "",
+        value,
+    )
+
+    value = value.split(
+        "/",
+        1,
+    )[0]
+
+    return value.rstrip(".")
+
+
+def valid_email(
+    email: str,
+) -> bool:
+
+    if len(email) > 254:
+        return False
+
+    return bool(
+        re.fullmatch(
+            r"[^@\s]+@[^@\s]+\.[^@\s]+",
+            email,
+        )
+    )
+
+
+def valid_domain(
+    domain: str,
+) -> bool:
+
+    if (
+        not domain
+        or len(domain) > 253
+        or "." not in domain
+    ):
+        return False
+
+    labels = domain.split(".")
+
+    if len(labels) < 2:
+        return False
+
+    pattern = re.compile(
+        r"^(?!-)[a-z0-9-]{1,63}(?<!-)$",
+        re.IGNORECASE,
+    )
+
+    return all(
+        pattern.fullmatch(label)
+        for label in labels
+    )
 
 
 def json_dumps(
@@ -241,6 +322,7 @@ def json_dumps(
         ensure_ascii=False,
         sort_keys=True,
         separators=(",", ":"),
+        default=str,
     )
 
 
@@ -253,7 +335,9 @@ def json_loads_safe(
         return default
 
     try:
-        return json.loads(value)
+        return json.loads(
+            value
+        )
     except Exception:
         return default
 
@@ -298,9 +382,11 @@ def atomic_write_json(
                 ensure_ascii=False,
                 indent=2,
                 sort_keys=True,
+                default=str,
             )
 
             handle.flush()
+
             os.fsync(
                 handle.fileno()
             )
@@ -347,6 +433,38 @@ def append_jsonl(
         )
 
 
+def mask_email(
+    email: str,
+) -> str:
+
+    email = normalize_email(
+        email
+    )
+
+    if "@" not in email:
+        return "***"
+
+    local, domain = email.split(
+        "@",
+        1,
+    )
+
+    if len(local) <= 2:
+        local_masked = (
+            local[:1] + "*"
+        )
+    else:
+        local_masked = (
+            local[:1]
+            + ("*" * min(6, len(local) - 2))
+            + local[-1:]
+        )
+
+    return (
+        f"{local_masked}@{domain}"
+    )
+
+
 # =============================================================================
 # ENUMS
 # =============================================================================
@@ -359,10 +477,10 @@ class UserRole(str, enum.Enum):
 
 
 class UserStatus(str, enum.Enum):
+    PENDING = "PENDING"
     ACTIVE = "ACTIVE"
     SUSPENDED = "SUSPENDED"
     DISABLED = "DISABLED"
-    PENDING = "PENDING"
 
 
 class ProviderState(str, enum.Enum):
@@ -415,6 +533,13 @@ class EmailServiceStatus(str, enum.Enum):
     CANCELLED = "CANCELLED"
 
 
+class MailboxStatus(str, enum.Enum):
+    PENDING = "PENDING"
+    ACTIVE = "ACTIVE"
+    SUSPENDED = "SUSPENDED"
+    DISABLED = "DISABLED"
+
+
 class SSLStatus(str, enum.Enum):
     PENDING = "PENDING"
     ACTIVE = "ACTIVE"
@@ -455,6 +580,10 @@ class PaymentError(MajdDmailError):
     pass
 
 
+class VerificationError(MajdDmailError):
+    pass
+
+
 # =============================================================================
 # PASSWORD SECURITY
 # =============================================================================
@@ -471,22 +600,30 @@ def hash_password(
     password: str,
 ) -> str:
 
+    password = str(
+        password or ""
+    )
+
     if len(password) < 10:
         raise ValidationError(
             "Password must contain at least 10 characters."
         )
 
-    salt = secrets.token_bytes(32)
+    salt = secrets.token_bytes(
+        32
+    )
 
     derived = hashlib.pbkdf2_hmac(
         "sha256",
-        password.encode("utf-8"),
+        password.encode(
+            "utf-8"
+        ),
         salt,
         PBKDF2_ITERATIONS,
     )
 
     return (
-        f"pbkdf2_sha256$"
+        "pbkdf2_sha256$"
         f"{PBKDF2_ITERATIONS}$"
         f"{salt.hex()}$"
         f"{derived.hex()}"
@@ -510,9 +647,15 @@ def verify_password(
 
         derived = hashlib.pbkdf2_hmac(
             "sha256",
-            password.encode("utf-8"),
-            bytes.fromhex(salt_hex),
-            int(iterations),
+            password.encode(
+                "utf-8"
+            ),
+            bytes.fromhex(
+                salt_hex
+            ),
+            int(
+                iterations
+            ),
         )
 
         return hmac.compare_digest(
@@ -525,7 +668,7 @@ def verify_password(
 
 
 # =============================================================================
-# DATABASE
+# DATABASE SCHEMA
 # =============================================================================
 
 SCHEMA = """
@@ -538,8 +681,31 @@ CREATE TABLE IF NOT EXISTS users (
     role TEXT NOT NULL,
     status TEXT NOT NULL,
     display_name TEXT,
+    verified_at TEXT,
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS email_verifications (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    code_hash TEXT NOT NULL,
+    expires_at TEXT NOT NULL,
+    attempts INTEGER NOT NULL DEFAULT 0,
+    consumed_at TEXT,
+    created_at TEXT NOT NULL,
+    FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS password_resets (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    code_hash TEXT NOT NULL,
+    expires_at TEXT NOT NULL,
+    attempts INTEGER NOT NULL DEFAULT 0,
+    consumed_at TEXT,
+    created_at TEXT NOT NULL,
+    FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS sessions (
@@ -549,23 +715,24 @@ CREATE TABLE IF NOT EXISTS sessions (
     expires_at TEXT NOT NULL,
     created_at TEXT NOT NULL,
     revoked_at TEXT,
-    FOREIGN KEY(user_id) REFERENCES users(id)
+    FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS domains (
     id TEXT PRIMARY KEY,
     user_id TEXT NOT NULL,
     domain_name TEXT NOT NULL UNIQUE,
+    infrastructure_reference TEXT,
     registrar_provider TEXT,
     registrar_reference TEXT,
     status TEXT NOT NULL,
     registered_at TEXT,
     expires_at TEXT,
-    auto_renew INTEGER NOT NULL DEFAULT 1,
+    auto_renew INTEGER NOT NULL DEFAULT 0,
     transfer_lock INTEGER NOT NULL DEFAULT 1,
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL,
-    FOREIGN KEY(user_id) REFERENCES users(id)
+    FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS dns_records (
@@ -578,7 +745,7 @@ CREATE TABLE IF NOT EXISTS dns_records (
     provider_reference TEXT,
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL,
-    FOREIGN KEY(domain_id) REFERENCES domains(id)
+    FOREIGN KEY(domain_id) REFERENCES domains(id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS ssl_certificates (
@@ -591,7 +758,7 @@ CREATE TABLE IF NOT EXISTS ssl_certificates (
     provider_reference TEXT,
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL,
-    FOREIGN KEY(domain_id) REFERENCES domains(id)
+    FOREIGN KEY(domain_id) REFERENCES domains(id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS email_services (
@@ -605,8 +772,25 @@ CREATE TABLE IF NOT EXISTS email_services (
     provider_reference TEXT,
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL,
-    FOREIGN KEY(user_id) REFERENCES users(id),
-    FOREIGN KEY(domain_id) REFERENCES domains(id)
+    FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY(domain_id) REFERENCES domains(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS mailboxes (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    domain_id TEXT NOT NULL,
+    email_service_id TEXT,
+    local_part TEXT NOT NULL,
+    address TEXT NOT NULL UNIQUE,
+    provider TEXT,
+    provider_reference TEXT,
+    status TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY(domain_id) REFERENCES domains(id) ON DELETE CASCADE,
+    FOREIGN KEY(email_service_id) REFERENCES email_services(id) ON DELETE SET NULL
 );
 
 CREATE TABLE IF NOT EXISTS products (
@@ -634,7 +818,7 @@ CREATE TABLE IF NOT EXISTS subscriptions (
     external_reference TEXT,
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL,
-    FOREIGN KEY(user_id) REFERENCES users(id),
+    FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
     FOREIGN KEY(product_id) REFERENCES products(id)
 );
 
@@ -650,7 +834,7 @@ CREATE TABLE IF NOT EXISTS invoices (
     external_reference TEXT,
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL,
-    FOREIGN KEY(user_id) REFERENCES users(id),
+    FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
     FOREIGN KEY(subscription_id) REFERENCES subscriptions(id)
 );
 
@@ -662,7 +846,7 @@ CREATE TABLE IF NOT EXISTS invoice_items (
     unit_price_minor INTEGER NOT NULL,
     total_minor INTEGER NOT NULL,
     metadata_json TEXT NOT NULL,
-    FOREIGN KEY(invoice_id) REFERENCES invoices(id)
+    FOREIGN KEY(invoice_id) REFERENCES invoices(id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS payments (
@@ -678,7 +862,7 @@ CREATE TABLE IF NOT EXISTS payments (
     failure_reason TEXT,
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL,
-    FOREIGN KEY(user_id) REFERENCES users(id),
+    FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
     FOREIGN KEY(invoice_id) REFERENCES invoices(id)
 );
 
@@ -716,14 +900,32 @@ CREATE TABLE IF NOT EXISTS notifications (
     sent_at TEXT
 );
 
+CREATE INDEX IF NOT EXISTS idx_users_email
+ON users(email);
+
+CREATE INDEX IF NOT EXISTS idx_sessions_user
+ON sessions(user_id);
+
+CREATE INDEX IF NOT EXISTS idx_email_verifications_user
+ON email_verifications(user_id);
+
+CREATE INDEX IF NOT EXISTS idx_password_resets_user
+ON password_resets(user_id);
+
 CREATE INDEX IF NOT EXISTS idx_domains_user
 ON domains(user_id);
 
 CREATE INDEX IF NOT EXISTS idx_dns_domain
 ON dns_records(domain_id);
 
-CREATE INDEX IF NOT EXISTS idx_email_user
+CREATE INDEX IF NOT EXISTS idx_email_services_user
 ON email_services(user_id);
+
+CREATE INDEX IF NOT EXISTS idx_mailboxes_user
+ON mailboxes(user_id);
+
+CREATE INDEX IF NOT EXISTS idx_mailboxes_domain
+ON mailboxes(domain_id);
 
 CREATE INDEX IF NOT EXISTS idx_subscriptions_user
 ON subscriptions(user_id);
@@ -739,6 +941,10 @@ ON audit_events(created_at);
 """
 
 
+# =============================================================================
+# DATABASE
+# =============================================================================
+
 class Database:
 
     def __init__(
@@ -746,7 +952,10 @@ class Database:
         path: Path = DATABASE_FILE,
     ) -> None:
 
-        self.path = path
+        self.path = Path(
+            path
+        )
+
         self._lock = threading.RLock()
 
 
@@ -755,7 +964,9 @@ class Database:
     ) -> sqlite3.Connection:
 
         connection = sqlite3.connect(
-            str(self.path),
+            str(
+                self.path
+            ),
             timeout=30,
             isolation_level=None,
         )
@@ -854,13 +1065,16 @@ class Database:
 
             row = connection.execute(
                 query,
-                tuple(parameters),
+                tuple(
+                    parameters
+                ),
             ).fetchone()
 
-            if row is None:
-                return None
-
-            return dict(row)
+            return (
+                dict(row)
+                if row
+                else None
+            )
 
         finally:
 
@@ -879,7 +1093,9 @@ class Database:
 
             rows = connection.execute(
                 query,
-                tuple(parameters),
+                tuple(
+                    parameters
+                ),
             ).fetchall()
 
             return [
@@ -915,7 +1131,9 @@ class AuditService:
         resource_type: Optional[str] = None,
         resource_id: Optional[str] = None,
         status: str = "SUCCESS",
-        details: Optional[Mapping[str, Any]] = None,
+        details: Optional[
+            Mapping[str, Any]
+        ] = None,
     ) -> str:
 
         event_id = new_id(
@@ -924,17 +1142,9 @@ class AuditService:
 
         timestamp = utc_now()
 
-        payload = {
-            "id": event_id,
-            "actor_id": actor_id,
-            "actor_role": actor_role,
-            "action": action,
-            "resource_type": resource_type,
-            "resource_id": resource_id,
-            "status": status,
-            "details": dict(details or {}),
-            "created_at": timestamp,
-        }
+        details_dict = dict(
+            details or {}
+        )
 
         with self.database.transaction() as connection:
 
@@ -962,7 +1172,7 @@ class AuditService:
                     resource_id,
                     status,
                     json_dumps(
-                        dict(details or {})
+                        details_dict
                     ),
                     timestamp,
                 ),
@@ -970,7 +1180,17 @@ class AuditService:
 
         append_jsonl(
             EVENTS_FILE,
-            payload,
+            {
+                "id": event_id,
+                "actor_id": actor_id,
+                "actor_role": actor_role,
+                "action": action,
+                "resource_type": resource_type,
+                "resource_id": resource_id,
+                "status": status,
+                "details": details_dict,
+                "created_at": timestamp,
+            },
         )
 
         return event_id
@@ -980,7 +1200,9 @@ class AuditService:
 # AUTHORITY
 # =============================================================================
 
-@dataclasses.dataclass(frozen=True)
+@dataclasses.dataclass(
+    frozen=True
+)
 class Actor:
     id: str
     role: UserRole
@@ -993,7 +1215,10 @@ class AuthorityService:
         actor: Actor,
     ) -> None:
 
-        if actor.role != UserRole.SUPREME_OWNER:
+        if (
+            actor.role
+            != UserRole.SUPREME_OWNER
+        ):
             raise AuthorizationError(
                 "SUPREME_OWNER authority required."
             )
@@ -1006,8 +1231,10 @@ class AuthorityService:
     ) -> None:
 
         if (
-            actor.role == UserRole.SUPREME_OWNER
-            or actor.id == target_user_id
+            actor.role
+            == UserRole.SUPREME_OWNER
+            or actor.id
+            == target_user_id
         ):
             return
 
@@ -1017,10 +1244,32 @@ class AuthorityService:
 
 
 # =============================================================================
-# USERS / AUTHENTICATION
+# USER / ACCOUNT / AUTHENTICATION
 # =============================================================================
 
 class UserService:
+
+    VERIFICATION_TTL_MINUTES = int(
+        os.getenv(
+            "MAJD_EMAIL_VERIFICATION_TTL_MINUTES",
+            "15",
+        )
+    )
+
+    RESET_TTL_MINUTES = int(
+        os.getenv(
+            "MAJD_PASSWORD_RESET_TTL_MINUTES",
+            "20",
+        )
+    )
+
+    MAX_CODE_ATTEMPTS = int(
+        os.getenv(
+            "MAJD_AUTH_CODE_MAX_ATTEMPTS",
+            "7",
+        )
+    )
+
 
     def __init__(
         self,
@@ -1032,6 +1281,31 @@ class UserService:
         self.audit = audit
 
 
+    def _public_user(
+        self,
+        row: Mapping[str, Any],
+    ) -> Dict[str, Any]:
+
+        return {
+            "id": row["id"],
+            "email": row["email"],
+            "role": row["role"],
+            "status": row["status"],
+            "display_name": row.get(
+                "display_name"
+            ),
+            "verified_at": row.get(
+                "verified_at"
+            ),
+            "created_at": row.get(
+                "created_at"
+            ),
+            "updated_at": row.get(
+                "updated_at"
+            ),
+        }
+
+
     def create_user(
         self,
         email: str,
@@ -1039,22 +1313,44 @@ class UserService:
         *,
         display_name: Optional[str] = None,
         role: UserRole = UserRole.CUSTOMER,
+        initially_active: bool = False,
     ) -> Dict[str, Any]:
 
         email = normalize_email(
             email
         )
 
-        if "@" not in email:
+        if not valid_email(
+            email
+        ):
             raise ValidationError(
                 "Invalid email address."
             )
+
+        display_name = (
+            str(
+                display_name or ""
+            ).strip()
+            or None
+        )
 
         user_id = new_id(
             "usr"
         )
 
         now = utc_now()
+
+        status = (
+            UserStatus.ACTIVE
+            if initially_active
+            else UserStatus.PENDING
+        )
+
+        verified_at = (
+            now
+            if initially_active
+            else None
+        )
 
         try:
 
@@ -1069,10 +1365,11 @@ class UserService:
                         role,
                         status,
                         display_name,
+                        verified_at,
                         created_at,
                         updated_at
                     )
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
                     (
                         user_id,
@@ -1081,8 +1378,9 @@ class UserService:
                             password
                         ),
                         role.value,
-                        UserStatus.ACTIVE.value,
+                        status.value,
                         display_name,
+                        verified_at,
                         now,
                         now,
                     ),
@@ -1100,11 +1398,43 @@ class UserService:
             actor_role=role.value,
             resource_type="USER",
             resource_id=user_id,
+            details={
+                "status": status.value,
+                "verified": bool(
+                    verified_at
+                ),
+            },
         )
 
         return self.get_user(
             user_id
         )
+
+
+    def register_customer(
+        self,
+        email: str,
+        password: str,
+        *,
+        display_name: Optional[str] = None,
+    ) -> Dict[str, Any]:
+
+        user = self.create_user(
+            email,
+            password,
+            display_name=display_name,
+            role=UserRole.CUSTOMER,
+            initially_active=False,
+        )
+
+        verification = self.issue_email_verification(
+            user["id"]
+        )
+
+        return {
+            "user": user,
+            "verification": verification,
+        }
 
 
     def get_user(
@@ -1120,6 +1450,7 @@ class UserService:
                 role,
                 status,
                 display_name,
+                verified_at,
                 created_at,
                 updated_at
             FROM users
@@ -1136,6 +1467,365 @@ class UserService:
             )
 
         return row
+
+
+    def get_user_by_email(
+        self,
+        email: str,
+    ) -> Dict[str, Any]:
+
+        email = normalize_email(
+            email
+        )
+
+        row = self.database.fetch_one(
+            """
+            SELECT
+                id,
+                email,
+                role,
+                status,
+                display_name,
+                verified_at,
+                created_at,
+                updated_at
+            FROM users
+            WHERE email = ?
+            """,
+            (
+                email,
+            ),
+        )
+
+        if not row:
+            raise NotFoundError(
+                "User not found."
+            )
+
+        return row
+
+
+    def update_profile(
+        self,
+        actor: Actor,
+        *,
+        display_name: str,
+    ) -> Dict[str, Any]:
+
+        display_name = str(
+            display_name or ""
+        ).strip()
+
+        if not display_name:
+            raise ValidationError(
+                "Display name is required."
+            )
+
+        now = utc_now()
+
+        with self.database.transaction() as connection:
+
+            cursor = connection.execute(
+                """
+                UPDATE users
+                SET
+                    display_name = ?,
+                    updated_at = ?
+                WHERE id = ?
+                """,
+                (
+                    display_name,
+                    now,
+                    actor.id,
+                ),
+            )
+
+            if cursor.rowcount != 1:
+                raise NotFoundError(
+                    "User not found."
+                )
+
+        self.audit.record(
+            "USER_PROFILE_UPDATED",
+            actor_id=actor.id,
+            actor_role=actor.role.value,
+            resource_type="USER",
+            resource_id=actor.id,
+        )
+
+        return self.get_user(
+            actor.id
+        )
+
+
+    def issue_email_verification(
+        self,
+        user_id: str,
+    ) -> Dict[str, Any]:
+
+        user = self.get_user(
+            user_id
+        )
+
+        if (
+            user["status"]
+            == UserStatus.ACTIVE.value
+            and user.get(
+                "verified_at"
+            )
+        ):
+            return {
+                "required": False,
+                "already_verified": True,
+                "destination_masked": mask_email(
+                    user["email"]
+                ),
+            }
+
+        code = (
+            f"{secrets.randbelow(1000000):06d}"
+        )
+
+        code_hash = sha256_text(
+            code
+        )
+
+        verification_id = new_id(
+            "verify"
+        )
+
+        now = utc_dt()
+
+        expires = now + dt.timedelta(
+            minutes=max(
+                1,
+                self.VERIFICATION_TTL_MINUTES,
+            )
+        )
+
+        with self.database.transaction() as connection:
+
+            connection.execute(
+                """
+                UPDATE email_verifications
+                SET consumed_at = ?
+                WHERE user_id = ?
+                  AND consumed_at IS NULL
+                """,
+                (
+                    now.isoformat(),
+                    user_id,
+                ),
+            )
+
+            connection.execute(
+                """
+                INSERT INTO email_verifications (
+                    id,
+                    user_id,
+                    code_hash,
+                    expires_at,
+                    attempts,
+                    created_at
+                )
+                VALUES (?, ?, ?, ?, 0, ?)
+                """,
+                (
+                    verification_id,
+                    user_id,
+                    code_hash,
+                    expires.isoformat(),
+                    now.isoformat(),
+                ),
+            )
+
+        self.audit.record(
+            "EMAIL_VERIFICATION_ISSUED",
+            actor_id=user_id,
+            actor_role=user["role"],
+            resource_type="USER",
+            resource_id=user_id,
+            details={
+                "destination": mask_email(
+                    user["email"]
+                ),
+            },
+        )
+
+        # Internal delivery payload.
+        # File 04/05 must send this through a verified notification provider.
+        # The plaintext code is not persisted in SQLite.
+        return {
+            "required": True,
+            "verification_id": verification_id,
+            "destination": user["email"],
+            "destination_masked": mask_email(
+                user["email"]
+            ),
+            "code": code,
+            "expires_at": expires.isoformat(),
+        }
+
+
+    def verify_email(
+        self,
+        email: str,
+        code: str,
+    ) -> Dict[str, Any]:
+
+        email = normalize_email(
+            email
+        )
+
+        code = str(
+            code or ""
+        ).strip()
+
+        user_row = self.database.fetch_one(
+            """
+            SELECT *
+            FROM users
+            WHERE email = ?
+            """,
+            (
+                email,
+            ),
+        )
+
+        if not user_row:
+            raise VerificationError(
+                "Invalid verification request."
+            )
+
+        if (
+            user_row["status"]
+            == UserStatus.ACTIVE.value
+            and user_row["verified_at"]
+        ):
+            return self._public_user(
+                user_row
+            )
+
+        record = self.database.fetch_one(
+            """
+            SELECT *
+            FROM email_verifications
+            WHERE user_id = ?
+              AND consumed_at IS NULL
+            ORDER BY created_at DESC
+            LIMIT 1
+            """,
+            (
+                user_row["id"],
+            ),
+        )
+
+        if not record:
+            raise VerificationError(
+                "Verification code not found."
+            )
+
+        expires_at = dt.datetime.fromisoformat(
+            record["expires_at"]
+        )
+
+        if expires_at <= utc_dt():
+
+            with self.database.transaction() as connection:
+
+                connection.execute(
+                    """
+                    UPDATE email_verifications
+                    SET consumed_at = ?
+                    WHERE id = ?
+                    """,
+                    (
+                        utc_now(),
+                        record["id"],
+                    ),
+                )
+
+            raise VerificationError(
+                "Verification code expired."
+            )
+
+        attempts = int(
+            record["attempts"]
+        )
+
+        if attempts >= self.MAX_CODE_ATTEMPTS:
+            raise VerificationError(
+                "Verification attempts exceeded."
+            )
+
+        if not hmac.compare_digest(
+            sha256_text(
+                code
+            ),
+            record["code_hash"],
+        ):
+
+            with self.database.transaction() as connection:
+
+                connection.execute(
+                    """
+                    UPDATE email_verifications
+                    SET attempts = attempts + 1
+                    WHERE id = ?
+                    """,
+                    (
+                        record["id"],
+                    ),
+                )
+
+            raise VerificationError(
+                "Invalid verification code."
+            )
+
+        now = utc_now()
+
+        with self.database.transaction() as connection:
+
+            connection.execute(
+                """
+                UPDATE email_verifications
+                SET consumed_at = ?
+                WHERE id = ?
+                """,
+                (
+                    now,
+                    record["id"],
+                ),
+            )
+
+            connection.execute(
+                """
+                UPDATE users
+                SET
+                    status = ?,
+                    verified_at = ?,
+                    updated_at = ?
+                WHERE id = ?
+                """,
+                (
+                    UserStatus.ACTIVE.value,
+                    now,
+                    now,
+                    user_row["id"],
+                ),
+            )
+
+        self.audit.record(
+            "EMAIL_VERIFIED",
+            actor_id=user_row["id"],
+            actor_role=user_row["role"],
+            resource_type="USER",
+            resource_id=user_row["id"],
+        )
+
+        return self.get_user(
+            user_row["id"]
+        )
 
 
     def authenticate(
@@ -1160,30 +1850,59 @@ class UserService:
         )
 
         if not row:
+
             raise AuthorizationError(
                 "Invalid credentials."
-            )
-
-        if row["status"] != UserStatus.ACTIVE.value:
-            raise AuthorizationError(
-                "User is not active."
             )
 
         if not verify_password(
             password,
             row["password_hash"],
         ):
+
             raise AuthorizationError(
                 "Invalid credentials."
             )
 
-        return {
-            "id": row["id"],
-            "email": row["email"],
-            "role": row["role"],
-            "status": row["status"],
-            "display_name": row["display_name"],
-        }
+        if (
+            row["status"]
+            == UserStatus.PENDING.value
+        ):
+
+            raise AuthorizationError(
+                "Email verification required."
+            )
+
+        if (
+            row["status"]
+            != UserStatus.ACTIVE.value
+        ):
+
+            raise AuthorizationError(
+                "User is not active."
+            )
+
+        if (
+            row["role"]
+            != UserRole.SUPREME_OWNER.value
+            and not row["verified_at"]
+        ):
+
+            raise AuthorizationError(
+                "Email verification required."
+            )
+
+        self.audit.record(
+            "USER_AUTHENTICATED",
+            actor_id=row["id"],
+            actor_role=row["role"],
+            resource_type="USER",
+            resource_id=row["id"],
+        )
+
+        return self._public_user(
+            row
+        )
 
 
     def create_session(
@@ -1192,6 +1911,19 @@ class UserService:
         *,
         ttl_hours: int = 24,
     ) -> str:
+
+        user = self.get_user(
+            user_id
+        )
+
+        if (
+            user["status"]
+            != UserStatus.ACTIVE.value
+        ):
+
+            raise AuthorizationError(
+                "User is not active."
+            )
 
         session_id = new_id(
             "ses"
@@ -1205,14 +1937,14 @@ class UserService:
             token
         )
 
-        now = dt.datetime.now(
-            dt.timezone.utc
-        )
+        now = utc_dt()
 
         expires = now + dt.timedelta(
             hours=max(
                 1,
-                ttl_hours,
+                int(
+                    ttl_hours
+                ),
             )
         )
 
@@ -1238,6 +1970,14 @@ class UserService:
                 ),
             )
 
+        self.audit.record(
+            "SESSION_CREATED",
+            actor_id=user_id,
+            actor_role=user["role"],
+            resource_type="SESSION",
+            resource_id=session_id,
+        )
+
         return token
 
 
@@ -1245,6 +1985,13 @@ class UserService:
         self,
         token: str,
     ) -> Optional[Actor]:
+
+        token = str(
+            token or ""
+        ).strip()
+
+        if not token:
+            return None
 
         token_hash = sha256_text(
             token
@@ -1261,7 +2008,7 @@ class UserService:
                 u.status
             FROM sessions s
             JOIN users u
-                ON u.id = s.user_id
+              ON u.id = s.user_id
             WHERE s.token_hash = ?
             """,
             (
@@ -1275,7 +2022,10 @@ class UserService:
         if row["revoked_at"]:
             return None
 
-        if row["status"] != UserStatus.ACTIVE.value:
+        if (
+            row["status"]
+            != UserStatus.ACTIVE.value
+        ):
             return None
 
         try:
@@ -1287,17 +2037,343 @@ class UserService:
         except ValueError:
             return None
 
-        if expires <= dt.datetime.now(
-            dt.timezone.utc
-        ):
+        if expires <= utc_dt():
+            return None
+
+        try:
+
+            role = UserRole(
+                row["role"]
+            )
+
+        except ValueError:
             return None
 
         return Actor(
             id=row["user_id"],
-            role=UserRole(
-                row["role"]
+            role=role,
+        )
+
+
+    def revoke_session(
+        self,
+        token: str,
+    ) -> bool:
+
+        token = str(
+            token or ""
+        ).strip()
+
+        if not token:
+            return False
+
+        token_hash = sha256_text(
+            token
+        )
+
+        with self.database.transaction() as connection:
+
+            cursor = connection.execute(
+                """
+                UPDATE sessions
+                SET revoked_at = ?
+                WHERE token_hash = ?
+                  AND revoked_at IS NULL
+                """,
+                (
+                    utc_now(),
+                    token_hash,
+                ),
+            )
+
+        return (
+            cursor.rowcount > 0
+        )
+
+
+    def revoke_all_sessions(
+        self,
+        user_id: str,
+    ) -> int:
+
+        with self.database.transaction() as connection:
+
+            cursor = connection.execute(
+                """
+                UPDATE sessions
+                SET revoked_at = ?
+                WHERE user_id = ?
+                  AND revoked_at IS NULL
+                """,
+                (
+                    utc_now(),
+                    user_id,
+                ),
+            )
+
+        return int(
+            cursor.rowcount
+        )
+
+
+    def issue_password_reset(
+        self,
+        email: str,
+    ) -> Dict[str, Any]:
+
+        email = normalize_email(
+            email
+        )
+
+        user = self.database.fetch_one(
+            """
+            SELECT *
+            FROM users
+            WHERE email = ?
+            """,
+            (
+                email,
             ),
         )
+
+        # Do not disclose whether account exists.
+        if not user:
+
+            return {
+                "accepted": True,
+                "destination_masked": mask_email(
+                    email
+                ),
+                "delivery_required": False,
+            }
+
+        code = (
+            f"{secrets.randbelow(1000000):06d}"
+        )
+
+        code_hash = sha256_text(
+            code
+        )
+
+        reset_id = new_id(
+            "reset"
+        )
+
+        now = utc_dt()
+
+        expires = now + dt.timedelta(
+            minutes=max(
+                1,
+                self.RESET_TTL_MINUTES,
+            )
+        )
+
+        with self.database.transaction() as connection:
+
+            connection.execute(
+                """
+                UPDATE password_resets
+                SET consumed_at = ?
+                WHERE user_id = ?
+                  AND consumed_at IS NULL
+                """,
+                (
+                    now.isoformat(),
+                    user["id"],
+                ),
+            )
+
+            connection.execute(
+                """
+                INSERT INTO password_resets (
+                    id,
+                    user_id,
+                    code_hash,
+                    expires_at,
+                    attempts,
+                    created_at
+                )
+                VALUES (?, ?, ?, ?, 0, ?)
+                """,
+                (
+                    reset_id,
+                    user["id"],
+                    code_hash,
+                    expires.isoformat(),
+                    now.isoformat(),
+                ),
+            )
+
+        self.audit.record(
+            "PASSWORD_RESET_ISSUED",
+            actor_id=user["id"],
+            actor_role=user["role"],
+            resource_type="USER",
+            resource_id=user["id"],
+        )
+
+        return {
+            "accepted": True,
+            "reset_id": reset_id,
+            "destination": user["email"],
+            "destination_masked": mask_email(
+                user["email"]
+            ),
+            "delivery_required": True,
+            "code": code,
+            "expires_at": expires.isoformat(),
+        }
+
+
+    def reset_password(
+        self,
+        email: str,
+        code: str,
+        new_password: str,
+    ) -> Dict[str, Any]:
+
+        email = normalize_email(
+            email
+        )
+
+        user = self.database.fetch_one(
+            """
+            SELECT *
+            FROM users
+            WHERE email = ?
+            """,
+            (
+                email,
+            ),
+        )
+
+        if not user:
+            raise VerificationError(
+                "Invalid reset request."
+            )
+
+        record = self.database.fetch_one(
+            """
+            SELECT *
+            FROM password_resets
+            WHERE user_id = ?
+              AND consumed_at IS NULL
+            ORDER BY created_at DESC
+            LIMIT 1
+            """,
+            (
+                user["id"],
+            ),
+        )
+
+        if not record:
+            raise VerificationError(
+                "Password reset code not found."
+            )
+
+        expires = dt.datetime.fromisoformat(
+            record["expires_at"]
+        )
+
+        if expires <= utc_dt():
+            raise VerificationError(
+                "Password reset code expired."
+            )
+
+        if int(
+            record["attempts"]
+        ) >= self.MAX_CODE_ATTEMPTS:
+
+            raise VerificationError(
+                "Password reset attempts exceeded."
+            )
+
+        if not hmac.compare_digest(
+            sha256_text(
+                str(
+                    code or ""
+                ).strip()
+            ),
+            record["code_hash"],
+        ):
+
+            with self.database.transaction() as connection:
+
+                connection.execute(
+                    """
+                    UPDATE password_resets
+                    SET attempts = attempts + 1
+                    WHERE id = ?
+                    """,
+                    (
+                        record["id"],
+                    ),
+                )
+
+            raise VerificationError(
+                "Invalid password reset code."
+            )
+
+        password_hash = hash_password(
+            new_password
+        )
+
+        now = utc_now()
+
+        with self.database.transaction() as connection:
+
+            connection.execute(
+                """
+                UPDATE password_resets
+                SET consumed_at = ?
+                WHERE id = ?
+                """,
+                (
+                    now,
+                    record["id"],
+                ),
+            )
+
+            connection.execute(
+                """
+                UPDATE users
+                SET
+                    password_hash = ?,
+                    updated_at = ?
+                WHERE id = ?
+                """,
+                (
+                    password_hash,
+                    now,
+                    user["id"],
+                ),
+            )
+
+            connection.execute(
+                """
+                UPDATE sessions
+                SET revoked_at = ?
+                WHERE user_id = ?
+                  AND revoked_at IS NULL
+                """,
+                (
+                    now,
+                    user["id"],
+                ),
+            )
+
+        self.audit.record(
+            "PASSWORD_RESET_COMPLETED",
+            actor_id=user["id"],
+            actor_role=user["role"],
+            resource_type="USER",
+            resource_id=user["id"],
+        )
+
+        return {
+            "ok": True,
+            "user_id": user["id"],
+        }
 
 
 # =============================================================================
@@ -1336,23 +2412,6 @@ class RegistrarProvider(Protocol):
     def search_domain(
         self,
         domain_name: str,
-    ) -> Dict[str, Any]:
-        ...
-
-    def register_domain(
-        self,
-        domain_name: str,
-        years: int,
-        customer_reference: str,
-        idempotency_key: str,
-    ) -> Dict[str, Any]:
-        ...
-
-    def renew_domain(
-        self,
-        external_reference: str,
-        years: int,
-        idempotency_key: str,
     ) -> Dict[str, Any]:
         ...
 
@@ -1414,6 +2473,13 @@ class EmailProvider(Protocol):
     ) -> Dict[str, Any]:
         ...
 
+    def create_mailbox(
+        self,
+        address: str,
+        customer_reference: str,
+    ) -> Dict[str, Any]:
+        ...
+
 
 class CertificateProvider(Protocol):
 
@@ -1432,7 +2498,7 @@ class CertificateProvider(Protocol):
 
 
 # =============================================================================
-# DISABLED PROVIDER
+# UNCONFIGURED PROVIDER
 # =============================================================================
 
 class UnconfiguredProvider:
@@ -1459,7 +2525,7 @@ class UnconfiguredProvider:
             checked_at=utc_now(),
             details={
                 "reason": (
-                    "No real external adapter is configured."
+                    "No real verified external adapter is configured."
                 )
             },
         )
@@ -1470,6 +2536,16 @@ class UnconfiguredProvider:
 # =============================================================================
 
 class ProviderRegistry:
+
+    PROVIDER_TYPES = (
+        "registrar",
+        "dns",
+        "payment",
+        "email",
+        "certificate",
+        "notification",
+    )
+
 
     def __init__(
         self,
@@ -1490,6 +2566,14 @@ class ProviderRegistry:
         provider: Any,
     ) -> None:
 
+        if (
+            provider_type
+            not in self.PROVIDER_TYPES
+        ):
+            raise ValidationError(
+                "Unsupported provider type."
+            )
+
         self._providers[
             provider_type
         ] = provider
@@ -1500,17 +2584,12 @@ class ProviderRegistry:
         provider_type: str,
     ) -> Any:
 
-        provider = self._providers.get(
-            provider_type
-        )
-
-        if provider is None:
-
-            return UnconfiguredProvider(
+        return self._providers.get(
+            provider_type,
+            UnconfiguredProvider(
                 provider_type
-            )
-
-        return provider
+            ),
+        )
 
 
     def verify(
@@ -1526,6 +2605,14 @@ class ProviderRegistry:
 
             health = provider.health()
 
+            if not isinstance(
+                health,
+                ProviderHealth,
+            ):
+                raise TypeError(
+                    "Provider health must return ProviderHealth."
+                )
+
         except Exception as exc:
 
             health = ProviderHealth(
@@ -1539,7 +2626,9 @@ class ProviderRegistry:
                 state=ProviderState.FAILED,
                 checked_at=utc_now(),
                 details={
-                    "error": repr(exc)
+                    "error": repr(
+                        exc
+                    )
                 },
             )
 
@@ -1590,14 +2679,12 @@ class ProviderRegistry:
 
         if (
             not health.ok
-            or health.state != ProviderState.LIVE
+            or health.state
+            != ProviderState.LIVE
         ):
 
             raise ProviderUnavailableError(
-                (
-                    f"{provider_type} provider "
-                    f"is not verified LIVE."
-                )
+                f"{provider_type} provider is not verified LIVE."
             )
 
         return provider
@@ -1612,36 +2699,29 @@ class ProviderRegistry:
             Any,
         ] = {}
 
-        for provider_type in (
-            "registrar",
-            "dns",
-            "payment",
-            "email",
-            "certificate",
-            "notification",
-        ):
+        for provider_type in self.PROVIDER_TYPES:
 
             health = self.verify(
                 provider_type
             )
 
-            result[
-                provider_type
-            ] = dataclasses.asdict(
+            data = dataclasses.asdict(
                 health
+            )
+
+            data["state"] = (
+                health.state.value
             )
 
             result[
                 provider_type
-            ][
-                "state"
-            ] = health.state.value
+            ] = data
 
         return result
 
 
 # =============================================================================
-# DOMAIN SERVICE
+# DOMAIN ACCOUNT RECORDS
 # =============================================================================
 
 class DomainService:
@@ -1658,42 +2738,12 @@ class DomainService:
         self.audit = audit
 
 
-    def search(
-        self,
-        domain_name: str,
-    ) -> Dict[str, Any]:
-
-        domain_name = normalize_domain(
-            domain_name
-        )
-
-        if "." not in domain_name:
-
-            raise ValidationError(
-                "Invalid domain name."
-            )
-
-        registrar = self.providers.require_live(
-            "registrar"
-        )
-
-        result = registrar.search_domain(
-            domain_name
-        )
-
-        return {
-            "domain": domain_name,
-            "provider": registrar.provider_name,
-            "result": result,
-            "verified_external_provider": True,
-        }
-
-
     def create_local_record(
         self,
         user_id: str,
         domain_name: str,
         *,
+        infrastructure_reference: Optional[str] = None,
         registrar_provider: Optional[str] = None,
         registrar_reference: Optional[str] = None,
         status: DomainStatus = DomainStatus.PENDING,
@@ -1703,6 +2753,13 @@ class DomainService:
         domain_name = normalize_domain(
             domain_name
         )
+
+        if not valid_domain(
+            domain_name
+        ):
+            raise ValidationError(
+                "Invalid domain name."
+            )
 
         domain_id = new_id(
             "dom"
@@ -1720,6 +2777,7 @@ class DomainService:
                         id,
                         user_id,
                         domain_name,
+                        infrastructure_reference,
                         registrar_provider,
                         registrar_reference,
                         status,
@@ -1727,12 +2785,13 @@ class DomainService:
                         created_at,
                         updated_at
                     )
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
                     (
                         domain_id,
                         user_id,
                         domain_name,
+                        infrastructure_reference,
                         registrar_provider,
                         registrar_reference,
                         status.value,
@@ -1745,11 +2804,11 @@ class DomainService:
         except sqlite3.IntegrityError as exc:
 
             raise ConflictError(
-                "Domain already exists in platform."
+                "Domain already exists in customer core."
             ) from exc
 
         self.audit.record(
-            "DOMAIN_RECORD_CREATED",
+            "DOMAIN_ACCOUNT_RECORD_CREATED",
             actor_id=user_id,
             actor_role=UserRole.CUSTOMER.value,
             resource_type="DOMAIN",
@@ -1814,21 +2873,15 @@ class DomainService:
 
 
 # =============================================================================
-# DNS SERVICE
+# PROFESSIONAL EMAIL / MAILBOXES
 # =============================================================================
 
-class DNSService:
+class ProfessionalEmailService:
 
-    ALLOWED_TYPES = {
-        "A",
-        "AAAA",
-        "CNAME",
-        "MX",
-        "TXT",
-        "SRV",
-        "CAA",
-        "NS",
-    }
+    LOCAL_PART_PATTERN = re.compile(
+        r"^[a-z0-9][a-z0-9._+-]{0,63}$",
+        re.IGNORECASE,
+    )
 
 
     def __init__(
@@ -1843,15 +2896,13 @@ class DNSService:
         self.audit = audit
 
 
-    def upsert(
+    def provision_service(
         self,
         actor: Actor,
         domain_id: str,
-        record_type: str,
-        record_name: str,
-        record_value: str,
         *,
-        ttl: int = 300,
+        plan_code: str,
+        mailbox_count: int = 1,
     ) -> Dict[str, Any]:
 
         domain = self.database.fetch_one(
@@ -1875,146 +2926,34 @@ class DNSService:
             domain["user_id"],
         )
 
-        record_type = record_type.upper()
-
-        if record_type not in self.ALLOWED_TYPES:
-            raise ValidationError(
-                "Unsupported DNS record type."
-            )
-
-        ttl = max(
-            60,
-            min(
-                int(ttl),
-                86400,
+        mailbox_count = max(
+            1,
+            int(
+                mailbox_count
             ),
         )
 
         provider = self.providers.require_live(
-            "dns"
+            "email"
         )
 
-        external = provider.upsert_record(
+        external = provider.provision_mailbox_service(
             domain["domain_name"],
-            record_type,
-            record_name,
-            record_value,
-            ttl,
-        )
-
-        record_id = new_id(
-            "dns"
-        )
-
-        now = utc_now()
-
-        with self.database.transaction() as connection:
-
-            connection.execute(
-                """
-                INSERT INTO dns_records (
-                    id,
-                    domain_id,
-                    record_type,
-                    record_name,
-                    record_value,
-                    ttl,
-                    provider_reference,
-                    created_at,
-                    updated_at
-                )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """,
-                (
-                    record_id,
-                    domain_id,
-                    record_type,
-                    record_name,
-                    record_value,
-                    ttl,
-                    external.get(
-                        "reference"
-                    ),
-                    now,
-                    now,
-                ),
-            )
-
-        self.audit.record(
-            "DNS_RECORD_UPSERTED",
-            actor_id=actor.id,
-            actor_role=actor.role.value,
-            resource_type="DNS_RECORD",
-            resource_id=record_id,
-            details={
-                "domain_id": domain_id,
-                "type": record_type,
-            },
-        )
-
-        return {
-            "id": record_id,
-            "domain_id": domain_id,
-            "provider": provider.provider_name,
-            "external": external,
-        }
-
-
-# =============================================================================
-# SSL SERVICE
-# =============================================================================
-
-class SSLService:
-
-    def __init__(
-        self,
-        database: Database,
-        providers: ProviderRegistry,
-        audit: AuditService,
-    ) -> None:
-
-        self.database = database
-        self.providers = providers
-        self.audit = audit
-
-
-    def provision(
-        self,
-        actor: Actor,
-        domain_id: str,
-    ) -> Dict[str, Any]:
-
-        domain = self.database.fetch_one(
-            """
-            SELECT *
-            FROM domains
-            WHERE id = ?
-            """,
-            (
-                domain_id,
-            ),
-        )
-
-        if not domain:
-            raise NotFoundError(
-                "Domain not found."
-            )
-
-        AuthorityService.require_self_or_owner(
-            actor,
+            mailbox_count,
+            plan_code,
             domain["user_id"],
         )
 
-        provider = self.providers.require_live(
-            "certificate"
-        )
+        if not isinstance(
+            external,
+            Mapping,
+        ):
+            raise ProviderUnavailableError(
+                "Invalid email provider response."
+            )
 
-        external = provider.provision_certificate(
-            domain["domain_name"]
-        )
-
-        certificate_id = new_id(
-            "ssl"
+        service_id = new_id(
+            "mailservice"
         )
 
         now = utc_now()
@@ -2023,30 +2962,28 @@ class SSLService:
 
             connection.execute(
                 """
-                INSERT INTO ssl_certificates (
+                INSERT INTO email_services (
                     id,
+                    user_id,
                     domain_id,
                     provider,
+                    plan_code,
+                    mailbox_count,
                     status,
-                    issued_at,
-                    expires_at,
                     provider_reference,
                     created_at,
                     updated_at
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
-                    certificate_id,
+                    service_id,
+                    domain["user_id"],
                     domain_id,
                     provider.provider_name,
-                    SSLStatus.ACTIVE.value,
-                    external.get(
-                        "issued_at"
-                    ),
-                    external.get(
-                        "expires_at"
-                    ),
+                    plan_code,
+                    mailbox_count,
+                    EmailServiceStatus.ACTIVE.value,
                     external.get(
                         "reference"
                     ),
@@ -2056,25 +2993,227 @@ class SSLService:
             )
 
         self.audit.record(
-            "SSL_PROVISIONED",
+            "EMAIL_SERVICE_PROVISIONED",
             actor_id=actor.id,
             actor_role=actor.role.value,
-            resource_type="SSL",
-            resource_id=certificate_id,
+            resource_type="EMAIL_SERVICE",
+            resource_id=service_id,
             details={
-                "domain_id": domain_id
+                "domain_id": domain_id,
+                "mailbox_count": mailbox_count,
+                "provider": provider.provider_name,
             },
         )
 
-        return {
-            "id": certificate_id,
-            "provider": provider.provider_name,
-            "external": external,
-        }
+        return self.get_service(
+            service_id
+        )
+
+
+    def get_service(
+        self,
+        service_id: str,
+    ) -> Dict[str, Any]:
+
+        row = self.database.fetch_one(
+            """
+            SELECT *
+            FROM email_services
+            WHERE id = ?
+            """,
+            (
+                service_id,
+            ),
+        )
+
+        if not row:
+            raise NotFoundError(
+                "Email service not found."
+            )
+
+        return row
+
+
+    def create_mailbox(
+        self,
+        actor: Actor,
+        domain_id: str,
+        local_part: str,
+        *,
+        email_service_id: Optional[str] = None,
+    ) -> Dict[str, Any]:
+
+        domain = self.database.fetch_one(
+            """
+            SELECT *
+            FROM domains
+            WHERE id = ?
+            """,
+            (
+                domain_id,
+            ),
+        )
+
+        if not domain:
+            raise NotFoundError(
+                "Domain not found."
+            )
+
+        AuthorityService.require_self_or_owner(
+            actor,
+            domain["user_id"],
+        )
+
+        local_part = str(
+            local_part or ""
+        ).strip().lower()
+
+        if not self.LOCAL_PART_PATTERN.fullmatch(
+            local_part
+        ):
+            raise ValidationError(
+                "Invalid mailbox local part."
+            )
+
+        address = (
+            f"{local_part}@"
+            f"{domain['domain_name']}"
+        )
+
+        provider = self.providers.require_live(
+            "email"
+        )
+
+        external = provider.create_mailbox(
+            address,
+            domain["user_id"],
+        )
+
+        if not isinstance(
+            external,
+            Mapping,
+        ):
+            raise ProviderUnavailableError(
+                "Invalid mailbox provider response."
+            )
+
+        mailbox_id = new_id(
+            "mbx"
+        )
+
+        now = utc_now()
+
+        try:
+
+            with self.database.transaction() as connection:
+
+                connection.execute(
+                    """
+                    INSERT INTO mailboxes (
+                        id,
+                        user_id,
+                        domain_id,
+                        email_service_id,
+                        local_part,
+                        address,
+                        provider,
+                        provider_reference,
+                        status,
+                        created_at,
+                        updated_at
+                    )
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        mailbox_id,
+                        domain["user_id"],
+                        domain_id,
+                        email_service_id,
+                        local_part,
+                        address,
+                        provider.provider_name,
+                        external.get(
+                            "reference"
+                        ),
+                        MailboxStatus.ACTIVE.value,
+                        now,
+                        now,
+                    ),
+                )
+
+        except sqlite3.IntegrityError as exc:
+
+            raise ConflictError(
+                "Mailbox already exists."
+            ) from exc
+
+        self.audit.record(
+            "MAILBOX_CREATED",
+            actor_id=actor.id,
+            actor_role=actor.role.value,
+            resource_type="MAILBOX",
+            resource_id=mailbox_id,
+            details={
+                "address": address,
+                "provider": provider.provider_name,
+            },
+        )
+
+        return self.get_mailbox(
+            mailbox_id
+        )
+
+
+    def get_mailbox(
+        self,
+        mailbox_id: str,
+    ) -> Dict[str, Any]:
+
+        row = self.database.fetch_one(
+            """
+            SELECT *
+            FROM mailboxes
+            WHERE id = ?
+            """,
+            (
+                mailbox_id,
+            ),
+        )
+
+        if not row:
+            raise NotFoundError(
+                "Mailbox not found."
+            )
+
+        return row
+
+
+    def list_mailboxes(
+        self,
+        actor: Actor,
+        user_id: str,
+    ) -> List[Dict[str, Any]]:
+
+        AuthorityService.require_self_or_owner(
+            actor,
+            user_id,
+        )
+
+        return self.database.fetch_all(
+            """
+            SELECT *
+            FROM mailboxes
+            WHERE user_id = ?
+            ORDER BY address
+            """,
+            (
+                user_id,
+            ),
+        )
 
 
 # =============================================================================
-# PRODUCT / PRICING SERVICE
+# PRODUCT / PRICING
 # =============================================================================
 
 class ProductService:
@@ -2099,14 +3238,41 @@ class ProductService:
         price_minor: int,
         currency: str = "SAR",
         recurring_interval: Optional[str] = None,
-        metadata: Optional[Mapping[str, Any]] = None,
+        metadata: Optional[
+            Mapping[str, Any]
+        ] = None,
     ) -> Dict[str, Any]:
 
         AuthorityService.require_owner(
             actor
         )
 
-        if price_minor < 0:
+        code = str(
+            code or ""
+        ).strip().upper()
+
+        name = str(
+            name or ""
+        ).strip()
+
+        category = str(
+            category or ""
+        ).strip().upper()
+
+        if not code:
+            raise ValidationError(
+                "Product code is required."
+            )
+
+        if not name:
+            raise ValidationError(
+                "Product name is required."
+            )
+
+        if int(
+            price_minor
+        ) < 0:
+
             raise ValidationError(
                 "Price cannot be negative."
             )
@@ -2144,10 +3310,14 @@ class ProductService:
                         name,
                         category,
                         currency.upper(),
-                        int(price_minor),
+                        int(
+                            price_minor
+                        ),
                         recurring_interval,
                         json_dumps(
-                            dict(metadata or {})
+                            dict(
+                                metadata or {}
+                            )
                         ),
                         now,
                         now,
@@ -2339,7 +3509,7 @@ class SubscriptionService:
 
 
 # =============================================================================
-# INVOICES
+# INVOICE
 # =============================================================================
 
 class InvoiceService:
@@ -2357,7 +3527,9 @@ class InvoiceService:
     def create(
         self,
         user_id: str,
-        items: Iterable[Mapping[str, Any]],
+        items: Iterable[
+            Mapping[str, Any]
+        ],
         *,
         subscription_id: Optional[str] = None,
         currency: str = "SAR",
@@ -2394,7 +3566,10 @@ class InvoiceService:
                     "Negative invoice price is invalid."
                 )
 
-            total = quantity * unit_price
+            total = (
+                quantity
+                * unit_price
+            )
 
             subtotal += total
 
@@ -2430,13 +3605,18 @@ class InvoiceService:
                     subtotal
                     * max(
                         0.0,
-                        float(tax_rate),
+                        float(
+                            tax_rate
+                        ),
                     )
                 )
             ),
         )
 
-        total = subtotal + tax
+        total = (
+            subtotal
+            + tax
+        )
 
         invoice_id = new_id(
             "inv"
@@ -2496,12 +3676,22 @@ class InvoiceService:
                             "itm"
                         ),
                         invoice_id,
-                        item["description"],
-                        item["quantity"],
-                        item["unit_price_minor"],
-                        item["total_minor"],
+                        item[
+                            "description"
+                        ],
+                        item[
+                            "quantity"
+                        ],
+                        item[
+                            "unit_price_minor"
+                        ],
+                        item[
+                            "total_minor"
+                        ],
                         json_dumps(
-                            item["metadata"]
+                            item[
+                                "metadata"
+                            ]
                         ),
                     ),
                 )
@@ -2584,7 +3774,11 @@ class PaymentService:
         idempotency_key: str,
     ) -> Dict[str, Any]:
 
-        if not idempotency_key.strip():
+        idempotency_key = str(
+            idempotency_key or ""
+        ).strip()
+
+        if not idempotency_key:
             raise ValidationError(
                 "Idempotency key is required."
             )
@@ -2624,7 +3818,10 @@ class PaymentService:
             invoice["user_id"],
         )
 
-        if invoice["status"] == InvoiceStatus.PAID.value:
+        if (
+            invoice["status"]
+            == InvoiceStatus.PAID.value
+        ):
             raise ConflictError(
                 "Invoice is already paid."
             )
@@ -2699,7 +3896,9 @@ class PaymentService:
                     """,
                     (
                         PaymentStatus.FAILED.value,
-                        repr(exc),
+                        repr(
+                            exc
+                        ),
                         utc_now(),
                         payment_id,
                     ),
@@ -2713,13 +3912,23 @@ class PaymentService:
                 resource_id=payment_id,
                 status="FAILED",
                 details={
-                    "error": repr(exc)
+                    "error": repr(
+                        exc
+                    )
                 },
             )
 
             raise PaymentError(
                 "Payment provider request failed."
             ) from exc
+
+        if not isinstance(
+            external,
+            Mapping,
+        ):
+            raise PaymentError(
+                "Invalid payment provider response."
+            )
 
         external_status = str(
             external.get(
@@ -2733,9 +3942,16 @@ class PaymentService:
             "PAID",
             "SUCCESS",
         }:
-            local_status = PaymentStatus.SUCCEEDED
+
+            local_status = (
+                PaymentStatus.SUCCEEDED
+            )
+
         else:
-            local_status = PaymentStatus.PENDING
+
+            local_status = (
+                PaymentStatus.PENDING
+            )
 
         with self.database.transaction() as connection:
 
@@ -2758,7 +3974,10 @@ class PaymentService:
                 ),
             )
 
-            if local_status == PaymentStatus.SUCCEEDED:
+            if (
+                local_status
+                == PaymentStatus.SUCCEEDED
+            ):
 
                 connection.execute(
                     """
@@ -2798,139 +4017,12 @@ class PaymentService:
             ),
         )
 
-        if result is None:
+        if not result:
             raise MajdDmailError(
                 "Payment disappeared after creation."
             )
 
         return result
-
-
-# =============================================================================
-# PROFESSIONAL PAID EMAIL
-# =============================================================================
-
-class ProfessionalEmailService:
-
-    def __init__(
-        self,
-        database: Database,
-        providers: ProviderRegistry,
-        audit: AuditService,
-    ) -> None:
-
-        self.database = database
-        self.providers = providers
-        self.audit = audit
-
-
-    def provision(
-        self,
-        actor: Actor,
-        domain_id: str,
-        *,
-        plan_code: str,
-        mailbox_count: int = 1,
-    ) -> Dict[str, Any]:
-
-        domain = self.database.fetch_one(
-            """
-            SELECT *
-            FROM domains
-            WHERE id = ?
-            """,
-            (
-                domain_id,
-            ),
-        )
-
-        if not domain:
-            raise NotFoundError(
-                "Domain not found."
-            )
-
-        AuthorityService.require_self_or_owner(
-            actor,
-            domain["user_id"],
-        )
-
-        mailbox_count = max(
-            1,
-            int(
-                mailbox_count
-            ),
-        )
-
-        provider = self.providers.require_live(
-            "email"
-        )
-
-        external = provider.provision_mailbox_service(
-            domain["domain_name"],
-            mailbox_count,
-            plan_code,
-            domain["user_id"],
-        )
-
-        service_id = new_id(
-            "mail"
-        )
-
-        now = utc_now()
-
-        with self.database.transaction() as connection:
-
-            connection.execute(
-                """
-                INSERT INTO email_services (
-                    id,
-                    user_id,
-                    domain_id,
-                    provider,
-                    plan_code,
-                    mailbox_count,
-                    status,
-                    provider_reference,
-                    created_at,
-                    updated_at
-                )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """,
-                (
-                    service_id,
-                    domain["user_id"],
-                    domain_id,
-                    provider.provider_name,
-                    plan_code,
-                    mailbox_count,
-                    EmailServiceStatus.ACTIVE.value,
-                    external.get(
-                        "reference"
-                    ),
-                    now,
-                    now,
-                ),
-            )
-
-        self.audit.record(
-            "PROFESSIONAL_EMAIL_PROVISIONED",
-            actor_id=actor.id,
-            actor_role=actor.role.value,
-            resource_type="EMAIL_SERVICE",
-            resource_id=service_id,
-            details={
-                "domain_id": domain_id,
-                "mailbox_count": mailbox_count,
-                "plan_code": plan_code,
-            },
-        )
-
-        return {
-            "id": service_id,
-            "provider": provider.provider_name,
-            "status": EmailServiceStatus.ACTIVE.value,
-            "external": external,
-        }
 
 
 # =============================================================================
@@ -3007,6 +4099,18 @@ class NotificationService:
 
 class OwnerService:
 
+    SAFE_COUNT_TABLES = (
+        "users",
+        "domains",
+        "mailboxes",
+        "email_services",
+        "subscriptions",
+        "invoices",
+        "payments",
+        "notifications",
+    )
+
+
     def __init__(
         self,
         database: Database,
@@ -3028,22 +4132,20 @@ class OwnerService:
             actor
         )
 
-        counters: Dict[str, int] = {}
+        counters: Dict[
+            str,
+            int,
+        ] = {}
 
-        for name, table in (
-            ("users", "users"),
-            ("domains", "domains"),
-            ("subscriptions", "subscriptions"),
-            ("invoices", "invoices"),
-            ("payments", "payments"),
-            ("email_services", "email_services"),
-        ):
+        for table in self.SAFE_COUNT_TABLES:
 
             row = self.database.fetch_one(
                 f"SELECT COUNT(*) AS count FROM {table}"
             )
 
-            counters[name] = int(
+            counters[
+                table
+            ] = int(
                 row["count"]
                 if row
                 else 0
@@ -3095,18 +4197,6 @@ class MajdDmailCorePlatform:
             self.audit,
         )
 
-        self.dns = DNSService(
-            self.database,
-            self.providers,
-            self.audit,
-        )
-
-        self.ssl = SSLService(
-            self.database,
-            self.providers,
-            self.audit,
-        )
-
         self.products = ProductService(
             self.database,
             self.audit,
@@ -3152,7 +4242,9 @@ class MajdDmailCorePlatform:
     ) -> Dict[str, Any]:
 
         state = {
+            "ok": True,
             "project": PROJECT_NAME,
+            "file_id": FILE_ID,
             "version": VERSION,
             "file": THIS_FILENAME,
             "owner_authority": OWNER_AUTHORITY,
@@ -3160,12 +4252,16 @@ class MajdDmailCorePlatform:
             "database": str(
                 self.database.path
             ),
+            "database_isolated_from_file_03": True,
             "primary_file_limit": MAX_PRIMARY_FILES,
             "next_ai_files": [
                 "03",
                 "04",
                 "05",
             ],
+            "customer_account_flow": (
+                "PENDING_EMAIL_VERIFICATION_TO_ACTIVE"
+            ),
             "external_services": (
                 "REQUIRE_REAL_VERIFICATION"
             ),
@@ -3182,7 +4278,10 @@ class MajdDmailCorePlatform:
             resource_type="SYSTEM",
             resource_id=PROJECT_NAME,
             details={
-                "version": VERSION
+                "version": VERSION,
+                "database": str(
+                    self.database.path
+                ),
             },
         )
 
@@ -3196,7 +4295,11 @@ class MajdDmailCorePlatform:
     ) -> Dict[str, Any]:
 
         database_ok = False
-        database_error: Optional[str] = None
+        database_error: Optional[
+            str
+        ] = None
+
+        schema_ok = False
 
         try:
 
@@ -3211,6 +4314,36 @@ class MajdDmailCorePlatform:
                 ) == 1
             )
 
+            required_tables = {
+                "users",
+                "email_verifications",
+                "password_resets",
+                "sessions",
+                "domains",
+                "email_services",
+                "mailboxes",
+                "provider_health",
+                "audit_events",
+            }
+
+            rows = self.database.fetch_all(
+                """
+                SELECT name
+                FROM sqlite_master
+                WHERE type = 'table'
+                """
+            )
+
+            actual_tables = {
+                row["name"]
+                for row in rows
+            }
+
+            schema_ok = (
+                required_tables
+                <= actual_tables
+            )
+
         except Exception as exc:
 
             database_error = repr(
@@ -3222,29 +4355,25 @@ class MajdDmailCorePlatform:
             / MASTERMIND_FILENAME
         ).exists()
 
-        external: Dict[
-            str,
-            Any,
-        ]
-
         if verify_external:
 
-            external = self.providers.health_all()
+            external = (
+                self.providers.health_all()
+            )
 
         else:
 
             external = {
-                "status": (
-                    "NOT_CHECKED"
-                ),
+                "status": "NOT_CHECKED",
                 "note": (
-                    "Use --external to perform "
-                    "real provider health checks."
+                    "External providers are not assumed LIVE. "
+                    "Use --external for real health checks."
                 ),
             }
 
         core_ok = (
             database_ok
+            and schema_ok
             and mastermind_exists
         )
 
@@ -3257,14 +4386,29 @@ class MajdDmailCorePlatform:
             "started_at": self.started_at,
             "database": {
                 "ok": database_ok,
+                "schema_ok": schema_ok,
                 "path": str(
                     self.database.path
                 ),
+                "isolated_from_file_03": True,
                 "error": database_error,
             },
             "mastermind_file": {
                 "exists": mastermind_exists,
                 "filename": MASTERMIND_FILENAME,
+            },
+            "auth": {
+                "customer_default_status": (
+                    UserStatus.PENDING.value
+                ),
+                "email_verification": True,
+                "password_reset": True,
+                "session_revocation": True,
+            },
+            "mail": {
+                "mailbox_records": True,
+                "external_mail_provider_required": True,
+                "fake_live_status_forbidden": True,
             },
             "primary_file_limit": MAX_PRIMARY_FILES,
             "external_services": external,
@@ -3296,26 +4440,35 @@ class MajdDmailCorePlatform:
                 ),
             }
 
+        normalized = normalize_email(
+            email
+        )
+
         existing = self.database.fetch_one(
             """
             SELECT
                 id,
                 email,
                 role,
-                status
+                status,
+                display_name,
+                verified_at,
+                created_at,
+                updated_at
             FROM users
             WHERE email = ?
             """,
             (
-                normalize_email(
-                    email
-                ),
+                normalized,
             ),
         )
 
         if existing:
 
-            if existing["role"] != UserRole.SUPREME_OWNER.value:
+            if (
+                existing["role"]
+                != UserRole.SUPREME_OWNER.value
+            ):
 
                 raise ConflictError(
                     "Configured owner email belongs to a non-owner account."
@@ -3328,16 +4481,136 @@ class MajdDmailCorePlatform:
             }
 
         owner = self.users.create_user(
-            email,
+            normalized,
             password,
-            display_name="MAJD SUPREME OWNER",
+            display_name=(
+                "MAJD SUPREME OWNER"
+            ),
             role=UserRole.SUPREME_OWNER,
+            initially_active=True,
         )
 
         return {
             "ok": True,
             "created": True,
             "owner": owner,
+        }
+
+
+# =============================================================================
+# SELF TEST
+# =============================================================================
+
+def self_test() -> Dict[str, Any]:
+
+    with tempfile.TemporaryDirectory(
+        prefix="majd-dmail-core-test-"
+    ) as temp_dir:
+
+        database_path = (
+            Path(
+                temp_dir
+            )
+            / "core.sqlite3"
+        )
+
+        platform = MajdDmailCorePlatform(
+            database_path
+        )
+
+        customer = platform.users.create_user(
+            "customer@example.com",
+            "StrongPassword123!",
+            display_name="Customer",
+        )
+
+        assert (
+            customer["status"]
+            == UserStatus.PENDING.value
+        )
+
+        issued = platform.users.issue_email_verification(
+            customer["id"]
+        )
+
+        verified = platform.users.verify_email(
+            "customer@example.com",
+            issued["code"],
+        )
+
+        assert (
+            verified["status"]
+            == UserStatus.ACTIVE.value
+        )
+
+        authenticated = platform.users.authenticate(
+            "customer@example.com",
+            "StrongPassword123!",
+        )
+
+        token = platform.users.create_session(
+            authenticated["id"]
+        )
+
+        actor = platform.users.resolve_session(
+            token
+        )
+
+        assert actor is not None
+        assert (
+            actor.id
+            == authenticated["id"]
+        )
+
+        revoked = platform.users.revoke_session(
+            token
+        )
+
+        assert revoked is True
+
+        assert (
+            platform.users.resolve_session(
+                token
+            )
+            is None
+        )
+
+        reset = platform.users.issue_password_reset(
+            "customer@example.com"
+        )
+
+        assert (
+            reset["delivery_required"]
+            is True
+        )
+
+        platform.users.reset_password(
+            "customer@example.com",
+            reset["code"],
+            "AnotherStrongPassword456!",
+        )
+
+        platform.users.authenticate(
+            "customer@example.com",
+            "AnotherStrongPassword456!",
+        )
+
+        return {
+            "ok": True,
+            "project": PROJECT_NAME,
+            "file": THIS_FILENAME,
+            "version": VERSION,
+            "tests": {
+                "database": True,
+                "pending_account": True,
+                "email_verification": True,
+                "activation": True,
+                "authentication": True,
+                "session_creation": True,
+                "session_resolution": True,
+                "logout_revocation": True,
+                "password_reset": True,
+            },
         }
 
 
@@ -3396,6 +4669,10 @@ def build_parser() -> argparse.ArgumentParser:
         "providers"
     )
 
+    subcommands.add_parser(
+        "self-test"
+    )
+
     return parser
 
 
@@ -3411,6 +4688,22 @@ def main() -> int:
     )
 
     try:
+
+        if command == "self-test":
+
+            result = self_test()
+
+            print_json(
+                result
+            )
+
+            return (
+                0
+                if result.get(
+                    "ok"
+                )
+                else 1
+            )
 
         platform = MajdDmailCorePlatform()
 
@@ -3448,7 +4741,9 @@ def main() -> int:
 
         if command == "seed-owner":
 
-            result = platform.seed_owner_from_environment()
+            result = (
+                platform.seed_owner_from_environment()
+            )
 
             print_json(
                 result
@@ -3517,4 +4812,6 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    raise SystemExit(
+        main()
+    )
